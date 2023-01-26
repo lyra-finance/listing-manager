@@ -45,7 +45,7 @@ library StrikePriceGenerator {
     uint[] storage pivots
   ) public view returns (uint[] memory newStrikes) {
     // find the ATM strike and see if it already exists
-    (uint atmStrike, uint step) = _findATMStrike(pivots, spot, tTarget);
+    (uint atmStrike, uint step) = _getATMStrike(pivots, spot, tTarget);
     uint addAtm = !_existsIn(liveStrikes, atmStrike) ? 1 : 0;
 
     // find remaining strike (excluding atm)
@@ -93,32 +93,43 @@ library StrikePriceGenerator {
     }
   }
 
+  /////////////
+  // Helpers //
+  /////////////
 
   /**
-   * @notice Searches for an exact match of target in values[].
-   * @param values An array of uint values.
-   * @param target Target value to search.
-   * @return idx Index of target in values[].
+   * @notice Finds an ATM strike complying with our pivot/step schema.
+   * @dev Consumes up to about 10k gas.
+   * @param spot Spot price.
+   * @param tAnnualized Years to expiry, 18 decimals.
+   * @return strike The first strike satisfying strike <= spot < (strike + step).
    */
-  function _indexOf(uint[] memory values, uint target) internal view returns (uint idx) {
-    unchecked {
-      for (uint i = 0; i < values.length; i++) {
-        if (target == values[i]) return i;
+  function _getATMStrike(uint[] storage pivots, uint spot, uint tAnnualized) internal view returns (uint strike, uint step) {
+
+    if (spot >= pivots[pivots.length-1]) {
+      revert SpotPriceAboveMaxStrike(spot);
+    }
+
+    if (spot == 0) {
+      revert SpotPriceIsZero(spot);
+    }
+
+    strike = _binarySearch(pivots, spot);
+    step = _getStep(strike, tAnnualized);
+    while (true) {
+      // by construction, we start with strike <= spot
+      // return the first strike such that strike <= spot < (strike + step)
+      // round to the closest between strike and (strike + step)
+      // TODO simplification candidate - can have a convention to round to left
+      // but then probably change the left/right fill priority to be right (currently left is added first)
+      if (spot < strike + step) {
+        uint distanceLeft = spot - strike;
+        uint distanceRight = (strike + step) - spot;
+        strike = (distanceRight < distanceLeft) ? strike + step : strike;
+        return (strike, step);
       }
-      return values.length;
-    }
-  }
-
-  /**
-   * @notice Searches for an exact match of target in values[], and returns true if exists.
-   * @param values An array of uint values.
-   * @param target Target value to search.
-   * @return exists Bool, true if exists.
-   */
-  function _existsIn(uint[] memory values, uint target) internal view returns (bool exists) {
-    unchecked {
-      return (_indexOf(values, target) != values.length);
-    }
+      strike += step;
+    }  
   }
 
   /**
@@ -129,7 +140,7 @@ library StrikePriceGenerator {
    * @param tAnnualized Years to expiry, 18 decimals.
    * @return step The strike step size at this pivot and tAnnualized.
    */
-  function _strikeStep(uint p, uint tAnnualized) internal view returns (uint step) {
+  function _getStep(uint p, uint tAnnualized) internal pure returns (uint step) {
     unchecked {
       // TODO make these magic numbers into params, e.g. struct/duoble array as input?
       uint div;
@@ -144,47 +155,15 @@ library StrikePriceGenerator {
     }
   }
 
-  /**
-   * @notice Finds an ATM strike complying with our pivot/step schema.
-   * @dev Consumes up to about 10k gas.
-   * @param spot Spot price.
-   * @param tAnnualized Years to expiry, 18 decimals.
-   * @return strike The first strike satisfying strike <= spot < (strike + step).
-   */
-  function _findATMStrike(uint[] storage pivots, uint spot, uint tAnnualized) internal view returns (uint strike, uint step) {
-
-    if (spot >= pivots[pivots.length-1]) {
-      revert SpotPriceAboveMaxStrike(spot);
-    }
-
-    if (spot == 0) {
-      revert SpotPriceIsZero(spot);
-    }
-
-    strike = _binarySearch(pivots, spot);
-    step = _strikeStep(strike, tAnnualized);
-    while (true) {
-      // by construction, we start with strike <= spot
-      // return the first strike such that strike <= spot < (strike + step)
-      // round to the closest between strike and (strike + step)
-      // TODO simplification candidate - can have a convention to round to left
-      // but then probably change the left/right fill priority to be right (currently left is added first)
-      if (spot < strike + step) {
-        uint distanceLeft = spot - strike;
-        uint distanceRight = (strike + step) - spot;
-        strike = (distanceRight < distanceLeft) ? strike + step : strike;
-        return (strike, step);
-      }
-      strike += step;
-    }
-    
-  }
+  ///////////////////
+  // Array Helpers //
+  ///////////////////
 
   /// copied from GWAV.sol
   function _binarySearch(uint[] storage pivots, uint spot) internal view returns (uint leftNearest) {
     uint leftPivot;
     uint rightPivot;
-    uint leftBound;
+    uint leftBound = 0;
     uint rightBound = pivots.length;
     uint i;
     while (true) {
@@ -208,18 +187,37 @@ library StrikePriceGenerator {
     return leftPivot;
   }
 
+
+  /**
+   * @notice Searches for an exact match of target in values[].
+   * @param values An array of uint values.
+   * @param target Target value to search.
+   * @return idx Index of target in values[].
+   */
+  function _indexOf(uint[] memory values, uint target) internal pure returns (uint idx) {
+    unchecked {
+      for (uint i = 0; i < values.length; i++) {
+        if (target == values[i]) return i;
+      }
+      return values.length;
+    }
+  }
+
+  /**
+   * @notice Searches for an exact match of target in values[], and returns true if exists.
+   * @param values An array of uint values.
+   * @param target Target value to search.
+   * @return exists Bool, true if exists.
+   */
+  function _existsIn(uint[] memory values, uint target) internal pure returns (bool exists) {
+    unchecked {
+      return (_indexOf(values, target) != values.length);
+    }
+  }
+
   ////////////
   // Errors //
   ////////////
-  error EmptyStrikes();
-  error EmptyExpiries();
-
-  error StrikeAlreadyExists(uint newStrike);
-  error ExpiryAlreadyExists(uint newExpiry);
-
-  error ZeroATMSkewNotAllowed();
-
-  error PivotIndexAboveMax(uint n);
   error SpotPriceAboveMaxStrike(uint spot);
   error SpotPriceIsZero(uint spot);
 }
