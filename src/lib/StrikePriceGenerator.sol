@@ -187,22 +187,6 @@ library StrikePriceGenerator {
     return leftPivot;
   }
 
-
-  /**
-   * @notice Searches for an exact match of target in values[].
-   * @param values An array of uint values.
-   * @param target Target value to search.
-   * @return idx Index of target in values[].
-   */
-  function _indexOf(uint[] memory values, uint target) internal pure returns (uint idx) {
-    unchecked {
-      for (uint i = 0; i < values.length; i++) {
-        if (target == values[i]) return i;
-      }
-      return values.length;
-    }
-  }
-
   /**
    * @notice Searches for an exact match of target in values[], and returns true if exists.
    * @param values An array of uint values.
@@ -210,9 +194,11 @@ library StrikePriceGenerator {
    * @return exists Bool, true if exists.
    */
   function _existsIn(uint[] memory values, uint target) internal pure returns (bool exists) {
-    unchecked {
-      return (_indexOf(values, target) != values.length);
+    for (uint i = 0; i < values.length; i++) {
+        if (target == values[i]) return true;
     }
+
+    return false
   }
 
   ////////////
