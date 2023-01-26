@@ -62,9 +62,7 @@ library StrikePriceGenerator {
     }
 
     // find strike range
-    uint strikeRange = int(maxScaledMoneyness.multiplyDecimal(BlackScholes._sqrt(tTarget * DecimalMath.UNIT))).exp();
-    uint maxStrike = spot.multiplyDecimal(strikeRange);
-    uint minStrike = spot.divideDecimal(strikeRange);
+    (uint minStrike, uint maxStrike) = _getStrikeRange(tTarget, spot, maxScaledMoneyness);
 
     // starting from ATM strike, go left and right in steps
     bool isLeft = true;
@@ -130,6 +128,12 @@ library StrikePriceGenerator {
       }
       strike += step;
     }  
+  }
+
+  function _getStrikeRange(uint tTarget, uint spot, uint maxScaledMoneyness) 
+    internal pure returns (uint minStrike, uint maxStrike) {
+    uint strikeRange = int(maxScaledMoneyness.multiplyDecimal(BlackScholes._sqrt(tTarget * DecimalMath.UNIT))).exp();
+    return (spot.divideDecimal(strikeRange), spot.multiplyDecimal(strikeRange));
   }
 
   /**
@@ -198,7 +202,7 @@ library StrikePriceGenerator {
         if (target == values[i]) return true;
     }
 
-    return false
+    return false;
   }
 
   ////////////
