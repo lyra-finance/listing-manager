@@ -174,7 +174,8 @@ library StrikePriceGenerator {
   // Array Helpers //
   ///////////////////
 
-  /// copied from GWAV.sol but finds nearest instead of the one on the left
+  /// copied from GWAV.sol
+  // todo: should reuse V2 ArrayLiv and add these in there.
   function _binarySearch(uint[] storage sortedArray, uint target) internal view returns (uint leftNearest) {
     uint leftPivot;
     uint rightPivot;
