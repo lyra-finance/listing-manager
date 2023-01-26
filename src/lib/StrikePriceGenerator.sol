@@ -19,22 +19,6 @@ library StrikePriceGenerator {
   using SignedDecimalMath for int;
   using FixedPointMathLib for int;
 
-  struct StrikeData {
-    // strike price
-    uint strikePrice;
-    // volatility component specific to the strike listing (boardIv * skew = vol of strike)
-    uint skew;
-  }
-
-  struct ExpiryData {
-    // The annualized time when the board expires.
-    uint tAnnualized;
-    // The initial value for baseIv (baseIv * skew = strike volatility).
-    uint baseIv;
-    // An array of strikes (strike prices and skews) belonging to this expiry
-    StrikeData[] strikes;
-  }
-
   /**
    * @notice Generates an array of new strikes around spot following the schema of this library.
    * @param tTarget The annualized time-to-expiry of the new surface to generate.
