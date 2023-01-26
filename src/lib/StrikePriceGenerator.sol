@@ -2,21 +2,20 @@
 pragma solidity 0.8.16;
 
 // Libraries
-import "../synthetix/SignedDecimalMath.sol";
-import "../synthetix/DecimalMath.sol";
-import "./FixedPointMathLib.sol";
-import "./BlackScholes.sol";
-import "./Math.sol";
+import "newport/synthetix/SignedDecimalMath.sol";
+import "newport/synthetix/DecimalMath.sol";
+import "newport/libraries/FixedPointMathLib.sol";
+import "newport/libraries/BlackScholes.sol";
+import "newport/libraries/Math.sol";
 
 /**
- * @title Automated Strikes and Expiries Manager
+ * @title Automated strike price generator
  * @author Lyra
- * @dev The library works with in-memory ExpiryData and StrikeData structs that must be mapped from option boards.
- *
- * It is used to generate new skews and baseIvs from these data structs (for new strikes / expiries).
- * It is also used to generate $ strike numbers based on a [1,2,5,10,20,50,100,...] strike sequence schema.
+ * @notice The library automatically generates strike prices for various expiries as spot fluctuates.
+ *         The intent is to automate away the decision making on which strikes to list, 
+ *         while generating boards with strike price that span a reasonable delta range. 
  */
-library AutoStrikes {
+library StrikePriceGenerator {
   using DecimalMath for uint;
   using SignedDecimalMath for int;
   using FixedPointMathLib for uint;
@@ -55,11 +54,10 @@ library AutoStrikes {
     uint maxScaledMoneyness,
     uint maxNumStrikes,
     uint forceATMSkew
-  ) public view returns (uint baseIv, uint[] memory strikes, uint[] memory skews) {
+  ) public view returns (uint[] memory strikes) {
     // TODO uint tTarget = getSchemaExpiry(expiryArray,...)
     uint[] memory liveStrikes = new uint[](0);
     strikes = getSchemaStrikes(tTarget, spot, maxScaledMoneyness, maxNumStrikes, liveStrikes);
-    (baseIv, skews) = getVolsForExpiry(expiryArray, tTarget, strikes, spot, forceATMSkew);
   }
 
   function extendBoard(
@@ -67,13 +65,12 @@ library AutoStrikes {
     uint spot,
     uint maxScaledMoneyness,
     uint maxNumStrikes
-  ) public view returns (uint[] memory strikes, uint[] memory skews) {
+  ) public view returns (uint[] memory strikes) {
     uint[] memory liveStrikes = new uint[](expiryData.strikes.length);
     for (uint i; i < expiryData.strikes.length; i++) {
       liveStrikes[i] = expiryData.strikes[i].strikePrice;
     }
     strikes = getSchemaStrikes(expiryData.tAnnualized, spot, maxScaledMoneyness, maxNumStrikes, liveStrikes);
-    skews = _getSkewForStrikeArray(expiryData, strikes, true);
   } 
 
   /** 
@@ -157,293 +154,6 @@ library AutoStrikes {
         strikes[strikes.length-nRight-1] = strikesRight[i];
       }
     }
-  }
-
-  /** 
-   * @notice Generates baseIv and an array of skews for a new expiry.
-   * @param expiryArray The "live" volatility surface in the form of ExpiryData[].
-   * @param tTarget The annualized time-to-expiry of the new surface user wants to generate.
-   * @param strikeTargets The strikes for the new surface user wants to generate (in $ form, 18 decimals).
-   * @param spot Current chainlink spot price.
-   * @param forceATMSkew Value for ATM skew to anchor towards, e.g. 1e18 will ensure ATM skew is set to 1.0.
-   * @return baseIv BaseIV for the new board.
-   * @return skews Array of skews for each strike in strikeTargets.
-   */
-  function getVolsForExpiry(
-    ExpiryData[] memory expiryArray,
-    uint tTarget,
-    uint[] memory strikeTargets,
-    uint spot,
-    uint forceATMSkew // TODO Can we assume strikeTargets always contains "ATM-ish" strike?
-  ) public view returns (uint baseIv, uint[] memory skews) {
-
-    if (expiryArray.length == 0) revert EmptyExpiries();
-    if (forceATMSkew == 0) revert ZeroATMSkewNotAllowed();
-
-    // TODO can we assume the expiries are already fully sorted? Going to depend on the process of mapping
-    // boards from storage to memory.
-    _sortExpiry(expiryArray);
-    uint idx;
-    {
-      uint[] memory tValues = new uint[](expiryArray.length);
-      for (uint i; i < expiryArray.length; i++) {
-        tValues[i] = expiryArray[i].tAnnualized;
-      }
-      // try to find exact match and revert if found
-      idx = _indexOf(tValues, tTarget);
-      if (idx != tValues.length) revert ExpiryAlreadyExists(tTarget);
-      idx = _searchSorted(tValues, tTarget);
-    }
-    if (idx == 0) {
-      return _extrapolateExpiry(expiryArray, 0, tTarget, strikeTargets, spot, forceATMSkew);
-    }
-    if (idx == expiryArray.length) {
-      return _extrapolateExpiry(expiryArray, idx-1, tTarget, strikeTargets, spot, forceATMSkew);
-    }
-    return _interpolateExpiry(expiryArray, idx, tTarget, strikeTargets, spot, forceATMSkew);
-  }
-
-  /** 
-   * @notice Generates a skew for a new strike from a "live" vol slice.
-   * @dev TODO Do we need revertIfAlreadyExists? Should the caller do all of these checks by themselves?
-   * @param expiryData The "live" volatility slice in the form of ExpiryData.
-   * @param strikeTarget The new strike for which skew is reqeusted (in $ form, 18 decimals).
-   * @param revertIfAlreadyExists A flag to revert the tx if strikeTarget already exists in expiryData.
-   * @return skew New strike's skew.
-   */
-  function getSkewForStrike(
-    ExpiryData memory expiryData,
-    uint strikeTarget,
-    bool revertIfAlreadyExists
-  ) public view returns (uint skew) {
-    if (expiryData.strikes.length == 0) revert EmptyStrikes();
-    if (expiryData.strikes.length == 1) return expiryData.strikes[0].skew;
-    
-    uint[] memory strikeValues = new uint[](expiryData.strikes.length);
-    for (uint i; i < expiryData.strikes.length; i++) {
-      strikeValues[i] = expiryData.strikes[i].strikePrice;
-    }
-    // try to find exact match
-    uint idx = _indexOf(strikeValues, strikeTarget);
-    if (idx != expiryData.strikes.length) {
-      if (revertIfAlreadyExists) revert StrikeAlreadyExists(strikeTarget);
-      else return expiryData.strikes[idx].skew;
-    } 
-    // if failed, interpolate / extrapolate
-    // ASSUME expiryData is already sorted!!!
-    idx = _searchSorted(strikeValues, strikeTarget);
-    if (idx == 0) {
-      return _extrapolateStrike(expiryData, 0, strikeTarget);
-    }
-    if (idx == strikeValues.length) {
-      return _extrapolateStrike(expiryData, idx-1, strikeTarget);
-    }
-    return _interpolateStrike(expiryData, idx, strikeTarget);
-  }
-
-  /** 
-   * @notice Interpolates a skew for a new strike from a "live" vol slice.
-   * @param expiryData The "live" volatility slice in the form of ExpiryData.
-   * @param idx The index of expiryData.strikes[] such that (strikes[idx-1] < newStrike <= strikes[idx])
-   * @param newStrike The new strike for which skew is reqeusted (in $ form, 18 decimals).
-   * @return newSkew New strike's skew.
-   */
-  function _interpolateStrike(
-    ExpiryData memory expiryData,
-    uint idx,
-    uint newStrike
-  ) internal view returns (uint newSkew) {
-      uint wRight = expiryData.baseIv.multiplyDecimal(expiryData.strikes[idx].skew);
-      wRight = wRight.multiplyDecimal(wRight);
-      uint wLeft = expiryData.baseIv.multiplyDecimal(expiryData.strikes[idx-1].skew);
-      wLeft = wLeft.multiplyDecimal(wLeft);
-      int kRight = int(expiryData.strikes[idx].strikePrice).ln();
-      int kLeft = int(expiryData.strikes[idx-1].strikePrice).ln();
-      int kLMid = int(newStrike).ln();
-      int yLeft = (kRight - kLMid).divideDecimal(kRight - kLeft);
-      yLeft = yLeft > int(UNIT) ? int(UNIT) : yLeft;
-      yLeft = yLeft < int(0) ? int(0) : yLeft;
-      return sqrt(uint(yLeft).multiplyDecimal(wLeft) + uint(int(UNIT) - yLeft).multiplyDecimal(wRight)
-      ).divideDecimal(expiryData.baseIv);
-  }
-
-  /** 
-   * @notice Extrapolates a skew for a new strike from a "live" vol slice.
-   * @param expiryData The "live" volatility slice in the form of ExpiryData.
-   * @param idx The index of the edge of expiryData.strikes[], either 0 or expiryData.strikes.length - 1
-   * @param newStrike The new strike for which skew is reqeusted (in $ form, 18 decimals).
-   * @return newSkew New strike's skew.
-   */
-  function _extrapolateStrike(
-    ExpiryData memory expiryData,
-    uint idx,
-    uint newStrike
-  ) internal view returns (uint newSkew) {
-      int slope;
-      // total variance and log-strike of the "edge" (leftmost or rightmost) 
-      uint w2 = expiryData.baseIv.multiplyDecimal(expiryData.strikes[idx].skew);
-      w2 = w2.multiplyDecimal(w2).multiplyDecimal(expiryData.tAnnualized);
-      int k2 = int(expiryData.strikes[idx].strikePrice).ln();
-      {
-        // block this out to resolve "stack too deep", we don't need w1 and k1 after slope is known
-        // TODO do we need to handle k2 == k1? Should never happen but what if
-        // total variance and log-strike of the second last element with respect to the edge
-        // TODO also maybe rename the 1,2,3 convention lol
-        uint idx1 = (idx == 0) ? 1 : idx - 1;
-        uint w1 = expiryData.baseIv.multiplyDecimal(expiryData.strikes[idx1].skew);
-        w1 = w1.multiplyDecimal(w1).multiplyDecimal(expiryData.tAnnualized);
-        int k1 = int(expiryData.strikes[idx1].strikePrice).ln();
-        slope = (int(w2)-int(w1)).divideDecimal(int(Math.abs(k2-k1)));
-        // By construction, slope is expected to be positive (vol increaes in the tails), hence floor at 0
-        // In absolute terms, slope is capped at MAX_STRIKE_EXTRAPOLATION_SLOPE
-        /// TODO a rug candidate -> can think if we can just flat-extrapolate strikes
-        /// (not gonna expect much of an error in 10-90 delta range)
-        /// then no need to compute slope, have 2 strikes, etc.
-        /// traders mostly short tails anyway, AMM doesn't want to be a buyer (?)
-        slope = (slope > 0) ? slope : int(0);
-        slope = (slope > MAX_STRIKE_EXTRAPOLATION_SLOPE) ? MAX_STRIKE_EXTRAPOLATION_SLOPE : slope;
-      }
-      int k3 = int(newStrike).ln();
-      uint w3 = w2 + Math.abs(k3-k2).multiplyDecimal(uint(slope));
-      return sqrt(w3.divideDecimal(expiryData.tAnnualized)).divideDecimal(expiryData.baseIv);
-  }
-
-  /** 
-   * @notice Array version of getSkewForStrike(), returns skews for strikeTargets as is if they already
-   *         exist, or interpolates between existing strikes if the target does not exist.
-   * @param expiryData The "live" volatility slice in the form of ExpiryData.
-   * @param strikeTargets The new strike for which skew is reqeusted (in $ form, 18 decimals).
-   * @param revertIfAlreadyExists A flag to revert the tx if strikeTarget already exists in expiryData.
-   * @return skews New strikes' skews.
-   */
-  function _getSkewForStrikeArray(
-    ExpiryData memory expiryData,
-    uint[] memory strikeTargets,
-    bool revertIfAlreadyExists
-  ) internal view returns (uint[] memory skews) {
-    // TODO check if sorted and ignore? Or add a flag to the ExpiryData struct? Maybe assume it's sorted?
-    _sortStrike(expiryData.strikes);
-    skews = new uint[](strikeTargets.length);
-    for (uint i; i<strikeTargets.length; i++) {
-      skews[i] = getSkewForStrike(expiryData, strikeTargets[i], revertIfAlreadyExists);
-    }
-  }
-
-  /** 
-   * @notice Interpolates baseIv and an array of skews for a new expiry.
-   * @param expiryArray The "live" volatility slice in the form of ExpiryData.
-   * @param idx The index of expiryArray, such that (expiryArray[idx-1] < tTarget <= expiryArray[idx])
-   * @param tTarget The annualized time-to-expiry of the new surface user wants to generate.
-   * @param strikeTargets The strikes for the new surface user wants to generate (in $ form, 18 decimals).
-   * @param spot Current chainlink spot price.
-   * @param forceATMSkew Value for ATM skew to anchor towards, e.g. 1e18 will ensure ATM skew is set to 1.0.
-   * @return baseIv BaseIV for the new board.
-   * @return skews Array of skews for each strike in strikeTargets.
-   */
-  function _interpolateExpiry(
-    ExpiryData[] memory expiryArray,
-    uint idx,
-    uint tTarget,
-    uint[] memory strikeTargets,
-    uint spot,
-    uint forceATMSkew
-  ) internal view returns (uint baseIv, uint[] memory skews) {
-    uint[] memory volsMid = _interpolateVols(expiryArray, idx, tTarget, strikeTargets);
-    uint[] memory strikeSpotDistances = new uint[](strikeTargets.length);
-    for (uint i=0; i<strikeSpotDistances.length; i++) {
-      strikeSpotDistances[i] = Math.abs(int(strikeTargets[i]) - int(spot));
-    }
-    // TODO simplification candidate: stick to a convention that ATM strike = first K s.t. S > K?
-    // will allow dropping strikeSpotDistances and allow us to remove argmin func (can use search sorted instead)
-    // only do this if the Katm is simplifed to be the left point (to be consistent)
-    // if doing this, change extrapolate logic to avoid strikeSpotDistances as well
-    uint argMinIdx = _argMin(strikeSpotDistances);
-    baseIv = volsMid[argMinIdx].divideDecimal(forceATMSkew);
-    // convert the vols array to skews array now that baseIv is known
-    for (uint i=0; i<volsMid.length; i++){
-      volsMid[i] = volsMid[i].divideDecimal(baseIv);
-    }
-    return (baseIv, volsMid);
-  }
-
-  /** 
-   * @notice Interpolates the vol points (i.e. before splitting them into baseIv and skew components)
-   * @param expiryArray The "live" volatility slice in the form of ExpiryData.
-   * @param idx The index of expiryArray, such that (expiryArray[idx-1] < tTarget <= expiryArray[idx])
-   * @param tTarget The annualized time-to-expiry of the new surface user wants to generate.
-   * @param strikeTargets The strikes for the new surface user wants to generate (in $ form, 18 decimals).
-   * @return volsMid Interpolated volatilities.
-   */
-  function _interpolateVols(
-    ExpiryData[] memory expiryArray,
-    uint idx,
-    uint tTarget,
-    uint[] memory strikeTargets
-    ) internal view returns (uint[] memory) {
-    uint[] memory volsMid = new uint[](strikeTargets.length);
-    ExpiryData memory expiryDataLeft = expiryArray[idx-1];
-    ExpiryData memory expiryDataRight = expiryArray[idx];
-    uint yLeft = (expiryDataRight.tAnnualized - tTarget).divideDecimal(
-      expiryDataRight.tAnnualized - expiryDataLeft.tAnnualized);
-    uint[] memory skewsLeft = _getSkewForStrikeArray(expiryDataLeft, strikeTargets, false);
-    uint[] memory skewsRight = _getSkewForStrikeArray(expiryDataRight, strikeTargets, false);
-
-    for (uint i=0; i<volsMid.length; i++) {
-      uint wLeft = skewsLeft[i].multiplyDecimal(expiryDataLeft.baseIv);
-      wLeft = wLeft.multiplyDecimal(wLeft).multiplyDecimal(expiryDataLeft.tAnnualized);
-      uint wRight = skewsRight[i].multiplyDecimal(expiryDataRight.baseIv);
-      wRight = wRight.multiplyDecimal(wRight).multiplyDecimal(expiryDataRight.tAnnualized);
-      volsMid[i] = sqrt(
-        (yLeft.multiplyDecimal(wLeft) +
-         (UNIT - yLeft).multiplyDecimal(wRight)
-        ).divideDecimal(tTarget));
-    }
-    return volsMid;
-  }
-
-  /** 
-   * @notice Extrapolate baseIv and an array of skews for a new expiry.
-   * @param expiryArray The "live" volatility slice in the form of ExpiryData.
-   * @param idx The index of expiryArray's edge, i.e. 0 or expiryArray.length - 1 
-   * @param tTarget The annualized time-to-expiry of the new surface user wants to generate.
-   * @param strikeTargets The strikes for the new surface user wants to generate (in $ form, 18 decimals).
-   * @param spot Current chainlink spot price.
-   * @param forceATMSkew Value for ATM skew to anchor towards, e.g. 1e18 will ensure ATM skew is set to 1.0.
-   * @return baseIv BaseIV for the new board.
-   * @return skews Array of skews for each strike in strikeTargets.
-   */
-  function _extrapolateExpiry(
-    ExpiryData[] memory expiryArray,
-    uint idx,
-    uint tTarget,
-    uint[] memory strikeTargets,
-    uint spot,
-    uint forceATMSkew
-  ) internal view returns (uint baseIv, uint[] memory skews) {
-    ExpiryData memory expiryData = expiryArray[idx];
-    // assumption: sigma(z(T1), T1) == sigma(z(T2), T2)
-    // i.e. vols are the same at the same standard moneyness points z
-    // in other words, 80-delta option with 2m expiry has roughly same vol as an 3m 80-delta option
-    // hence to get the extrapolated sigma(z(T2), T2), we need to map strikeTargets -> z(T2)
-    // then recover strikesT1 from z(T1) = z(T2) by inverting z
-    uint[] memory strikesT1 = new uint[](strikeTargets.length);
-    uint[] memory strikeSpotDistances = new uint[](strikeTargets.length);
-    for (uint i=0; i<strikesT1.length; i++){
-      int moneyness = _strikeToMoneyness(strikeTargets[i], spot, tTarget);
-      strikeSpotDistances[i] = Math.abs(int(strikeTargets[i]) - int(spot));
-      strikesT1[i] = _moneynessToStrike(moneyness, spot, expiryData.tAnnualized);
-    }
-    uint[] memory expirySkews = _getSkewForStrikeArray(expiryData, strikesT1, false);
-    // return the extrapolated values as is if there is no forceATMSkew
-    // TODO rug this, no reason to support both 0 and non-zero imo forceATMSkew, let's pick one
-    if (forceATMSkew == 0) return (expiryData.baseIv, expirySkews);
-    // otherwise re-scale baseIv and skews to ensure ATM skew for new expiry == forceATMSkew (usually 1.0)
-    uint argMinIdx = _argMin(strikeSpotDistances);
-    uint scaler = forceATMSkew.divideDecimal(expirySkews[argMinIdx]);
-    for (uint i=0; i<expirySkews.length; i++){
-      expirySkews[i] = expirySkews[i].multiplyDecimal(scaler);
-    }
-    return (expiryData.baseIv.divideDecimal(scaler), expirySkews);
   }
 
   /**

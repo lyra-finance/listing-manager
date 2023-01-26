@@ -2,9 +2,9 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
-import "../src/lib/StrikeGeneratorTest.sol";
+import "../src/lib/StrikePriceGenerator.sol";
 
-contract StrikeGeneratorTest is Test {
+contract StrikePriceGeneratorTest is Test {
     function setUp() public {
     }
 }
