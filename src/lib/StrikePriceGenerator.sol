@@ -106,7 +106,7 @@ library StrikePriceGenerator {
     uint maxStrike;
     uint minStrike;
     {
-      uint strikeScaler = int(maxScaledMoneyness.multiplyDecimal(sqrt(tTarget))).exp();
+      uint strikeScaler = int(maxScaledMoneyness.multiplyDecimal(BlackScholes._sqrt(tTarget * UNIT))).exp();
       maxStrike = spot.multiplyDecimal(strikeScaler);
       minStrike = spot.divideDecimal(strikeScaler);
     }
@@ -289,16 +289,6 @@ library StrikePriceGenerator {
   }
 
   /**
-   * TODO Should we update FixedPointMathLib to a version that has sqrt?
-   * @notice Returns the square root of a value using Newton's method.
-   */
-  function sqrt(uint x) internal view returns (uint) {
-    // Add in an extra unit factor for the square root to gobble;
-    // otherwise, sqrt(x * UNIT) = sqrt(x) * sqrt(UNIT)
-    return BlackScholes._sqrt(x * UNIT);
-  }
-
-  /**
    * @notice Converts a $ strike to standard moneyness.
    * @dev By "standard" moneyness we mean moneyness := ln(K/S) / sqrt(T).
    *      This value allows us to avoid delta calculations.
@@ -311,7 +301,7 @@ library StrikePriceGenerator {
    */
   function _strikeToMoneyness(uint strike, uint spot, uint tAnnualized) internal view returns (int moneyness) {
     unchecked {
-      moneyness = int(strike.divideDecimal(spot)).ln().divideDecimal(int(sqrt(tAnnualized)));
+      moneyness = int(strike.divideDecimal(spot)).ln().divideDecimal(int(BlackScholes._sqrt(tAnnualized * UNIT)));
     }
   }
 
@@ -324,7 +314,7 @@ library StrikePriceGenerator {
    */
   function _moneynessToStrike(int moneyness, uint spot, uint tAnnualized) internal view returns (uint strike) {
     unchecked {
-      strike = moneyness.multiplyDecimal(int(sqrt(tAnnualized))).exp().multiplyDecimal(spot);
+      strike = moneyness.multiplyDecimal(int(BlackScholes._sqrt(tAnnualized * UNIT))).exp().multiplyDecimal(spot);
     }
   }
 
