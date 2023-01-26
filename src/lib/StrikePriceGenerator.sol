@@ -6,7 +6,6 @@ import "newport/synthetix/SignedDecimalMath.sol";
 import "newport/synthetix/DecimalMath.sol";
 import "newport/libraries/FixedPointMathLib.sol";
 import "newport/libraries/BlackScholes.sol";
-import "newport/libraries/Math.sol";
 
 /**
  * @title Automated strike price generator
@@ -18,7 +17,6 @@ import "newport/libraries/Math.sol";
 library StrikePriceGenerator {
   using DecimalMath for uint;
   using SignedDecimalMath for int;
-  using FixedPointMathLib for uint;
   using FixedPointMathLib for int;
 
   struct StrikeData {
