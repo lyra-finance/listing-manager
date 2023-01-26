@@ -122,36 +122,6 @@ library StrikePriceGenerator {
   }
 
   /**
-   * @notice Converts a $ strike to standard moneyness.
-   * @dev By "standard" moneyness we mean moneyness := ln(K/S) / sqrt(T).
-   *      This value allows us to avoid delta calculations.
-   *      Delta maps one-to-one to Black-Scholes d1, and this is a "simple" version of d1.
-   *      So instead of using / computing / inverting delta, we can just find moneyness
-   *      That maps to desired delta values, and use it instead.
-   * @param strike dollar strike, 18 decimals
-   * @param spot dollar Chainlink spot, 18 decimals
-   * @param tAnnualized annualized time-to-expiry, 18 decimals
-   */
-  function _strikeToMoneyness(uint strike, uint spot, uint tAnnualized) internal view returns (int moneyness) {
-    unchecked {
-      moneyness = int(strike.divideDecimal(spot)).ln().divideDecimal(int(BlackScholes._sqrt(tAnnualized * DecimalMath.UNIT)));
-    }
-  }
-
-  /**
-   * @notice Converts standard moneyness back to a $ strike.
-   * @dev Literally "undoes" _strikeToMoneyness()
-   * @param moneyness moneyness as defined in _strikeToMoneyness()
-   * @param spot dollar Chainlink spot, 18 decimals
-   * @param tAnnualized annualized time-to-expiry, 18 decimals
-   */
-  function _moneynessToStrike(int moneyness, uint spot, uint tAnnualized) internal view returns (uint strike) {
-    unchecked {
-      strike = moneyness.multiplyDecimal(int(BlackScholes._sqrt(tAnnualized * DecimalMath.UNIT))).exp().multiplyDecimal(spot);
-    }
-  }
-
-  /**
    * @notice Returns the strike step corresponding to the pivot bucket and the time-to-expiry.
    * @dev Since vol is approx ~ sqrt(T), it makes sense to double the step size
    *      every time tAnnualized is roughly quadripled
