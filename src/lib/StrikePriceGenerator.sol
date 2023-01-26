@@ -44,8 +44,12 @@ library StrikePriceGenerator {
     uint[] memory liveStrikes,
     uint[] storage pivots
   ) public view returns (uint[] memory newStrikes) {
+    // find step size and the nearest pivot
+    uint nearestPivot = _getNearestPivot(pivots, spot);
+    uint step = _getStep(nearestPivot, tTarget);
+
     // find the ATM strike and see if it already exists
-    (uint atmStrike, uint step) = _getATMStrike(pivots, spot, tTarget);
+    (uint atmStrike) = _getATMStrike(spot, nearestPivot, step);
     uint addAtm = !_existsIn(liveStrikes, atmStrike) ? 1 : 0;
 
     // find remaining strike (excluding atm)
@@ -95,16 +99,8 @@ library StrikePriceGenerator {
   // Helpers //
   /////////////
 
-  /**
-   * @notice Finds an ATM strike complying with our pivot/step schema.
-   * @dev Consumes up to about 10k gas.
-   * @param spot Spot price.
-   * @param tAnnualized Years to expiry, 18 decimals.
-   * @return strike The first strike satisfying strike <= spot < (strike + step).
-   */
-  function _getATMStrike(uint[] storage pivots, uint spot, uint tAnnualized) internal view returns (uint strike, uint step) {
-
-    if (spot >= pivots[pivots.length-1]) {
+  function _getNearestPivot(uint[] storage pivots, uint spot) internal view returns (uint nearestPivot) {
+   if (spot >= pivots[pivots.length-1]) {
       revert SpotPriceAboveMaxStrike(spot);
     }
 
@@ -112,21 +108,31 @@ library StrikePriceGenerator {
       revert SpotPriceIsZero(spot);
     }
 
-    strike = _binarySearch(pivots, spot);
-    step = _getStep(strike, tAnnualized);
+    // finds the nearest pivot
+    return _binarySearch(pivots, spot);
+  }
+
+  /**
+   * @notice Finds an ATM strike complying with our pivot/step schema.
+   * @dev Consumes up to about 10k gas.
+   * @param spot Spot price.
+   * @return atmStrike The first strike satisfying strike <= spot < (strike + step).
+   */
+  function _getATMStrike(uint spot, uint pivot, uint step) internal view returns (uint atmStrike) {
+    atmStrike = pivot;
     while (true) {
       // by construction, we start with strike <= spot
       // return the first strike such that strike <= spot < (strike + step)
       // round to the closest between strike and (strike + step)
       // TODO simplification candidate - can have a convention to round to left
       // but then probably change the left/right fill priority to be right (currently left is added first)
-      if (spot < strike + step) {
-        uint distanceLeft = spot - strike;
-        uint distanceRight = (strike + step) - spot;
-        strike = (distanceRight < distanceLeft) ? strike + step : strike;
-        return (strike, step);
+      if (spot < atmStrike + step) {
+        uint distanceLeft = spot - atmStrike;
+        uint distanceRight = (atmStrike + step) - spot;
+        atmStrike = (distanceRight < distanceLeft) ? atmStrike + step : atmStrike;
+        return atmStrike;
       }
-      strike += step;
+      atmStrike += step;
     }  
   }
 
@@ -163,7 +169,7 @@ library StrikePriceGenerator {
   // Array Helpers //
   ///////////////////
 
-  /// copied from GWAV.sol
+  /// copied from GWAV.sol but finds nearest instead of the one on the left
   function _binarySearch(uint[] storage pivots, uint spot) internal view returns (uint leftNearest) {
     uint leftPivot;
     uint rightPivot;
@@ -176,9 +182,12 @@ library StrikePriceGenerator {
       rightPivot = pivots[i + 1];
 
       bool onRightHalf = leftPivot <= spot;
+      bool onLeftHalf = spot <= rightPivot;
 
       // check if we've found the answer!
-      if (onRightHalf && spot <= rightPivot) break;
+      if (onRightHalf && onLeftHalf) {
+        return leftPivot;
+      }
 
       // otherwise start next search iteration
       if (!onRightHalf) {
