@@ -45,7 +45,7 @@ library StrikePriceGenerator {
     uint[] storage pivots
   ) public view returns (uint[] memory newStrikes) {
     // find step size and the nearest pivot
-    uint nearestPivot = _getNearestPivot(pivots, spot);
+    uint nearestPivot = _getLeftNearestPivot(pivots, spot);
     uint step = _getStep(nearestPivot, tTarget);
 
     // find the ATM strike and see if it already exists
@@ -72,12 +72,11 @@ library StrikePriceGenerator {
     bool isLeft = true;
     uint nextStrike;
     uint stepFromAtm;
-    for (uint i = 1; i < uint(remainNumStrikes+1); i++) {
+    for (uint i = 1; i < uint(remainNumStrikes + 1); i++) {
       stepFromAtm = i * step;
-      if (isLeft) { // prioritize left strike
-        nextStrike = (atmStrike > stepFromAtm) 
-        ? atmStrike - stepFromAtm
-        : 0;
+      if (isLeft) {
+        // prioritize left strike
+        nextStrike = (atmStrike > stepFromAtm) ? atmStrike - stepFromAtm : 0;
       } else {
         nextStrike = atmStrike + stepFromAtm;
       }
@@ -99,8 +98,14 @@ library StrikePriceGenerator {
   // Helpers //
   /////////////
 
-  function _getNearestPivot(uint[] storage pivots, uint spot) internal view returns (uint nearestPivot) {
-   if (spot >= pivots[pivots.length-1]) {
+  /**
+   * @notice Finds the left nearest pivot using binary search
+   * @param pivots Storage array of available pivots
+   * @param spot Spot price
+   * @return nearestPivot left nearest pivot
+   */
+  function _getLeftNearestPivot(uint[] storage pivots, uint spot) internal view returns (uint nearestPivot) {
+    if (spot >= pivots[pivots.length - 1]) {
       revert SpotPriceAboveMaxStrike(spot);
     }
 
@@ -113,31 +118,31 @@ library StrikePriceGenerator {
   }
 
   /**
-   * @notice Finds an ATM strike complying with our pivot/step schema.
-   * @dev Consumes up to about 10k gas.
-   * @param spot Spot price.
-   * @return atmStrike The first strike satisfying strike <= spot < (strike + step).
+   * @notice Finds the ATM strike by stepping up from the pivot
+   * @param spot Spot price
+   * @param pivot Pivot strike that is nearest to the spot price
+   * @param step Step size
+   * @return atmStrike The first strike satisfying strike <= spot < (strike + step)
    */
-  function _getATMStrike(uint spot, uint pivot, uint step) internal view returns (uint atmStrike) {
+  function _getATMStrike(uint spot, uint pivot, uint step) internal pure returns (uint atmStrike) {
     atmStrike = pivot;
     while (true) {
-      // by construction, we start with strike <= spot
-      // return the first strike such that strike <= spot < (strike + step)
-      // round to the closest between strike and (strike + step)
-      // TODO simplification candidate - can have a convention to round to left
-      // but then probably change the left/right fill priority to be right (currently left is added first)
-      if (spot < atmStrike + step) {
+      uint nextStrike = atmStrike + step;
+
+      if (spot < nextStrike) {
         uint distanceLeft = spot - atmStrike;
-        uint distanceRight = (atmStrike + step) - spot;
-        atmStrike = (distanceRight < distanceLeft) ? atmStrike + step : atmStrike;
-        return atmStrike;
+        uint distanceRight = nextStrike - spot;
+        return (distanceRight < distanceLeft) ? nextStrike : atmStrike;
       }
       atmStrike += step;
-    }  
+    }
   }
 
-  function _getStrikeRange(uint tTarget, uint spot, uint maxScaledMoneyness) 
-    internal pure returns (uint minStrike, uint maxStrike) {
+  function _getStrikeRange(uint tTarget, uint spot, uint maxScaledMoneyness)
+    internal
+    pure
+    returns (uint minStrike, uint maxStrike)
+  {
     uint strikeRange = int(maxScaledMoneyness.multiplyDecimal(BlackScholes._sqrt(tTarget * DecimalMath.UNIT))).exp();
     return (spot.divideDecimal(strikeRange), spot.multiplyDecimal(strikeRange));
   }
@@ -208,7 +213,7 @@ library StrikePriceGenerator {
    */
   function _existsIn(uint[] memory values, uint target) internal pure returns (bool exists) {
     for (uint i = 0; i < values.length; i++) {
-        if (target == values[i]) return true;
+      if (target == values[i]) return true;
     }
 
     return false;
