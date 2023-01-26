@@ -127,16 +127,22 @@ library StrikePriceGenerator {
 
     // starting from ATM strike, go left and right in steps of `step`
     // record a new strike if it does not exist in liveStrikes and if it is within min/max bounds
+    bool isLeft = true;
+    uint nextStrike;
+    uint stepFromAtm;
     for (uint i = 1; i < uint(remainNumStrikes+1); i++) {
-      uint newLeft = (atmStrike > (i + 1) * step) 
-        ? atmStrike - (i) * step 
+      stepFromAtm = i * step;
+      if (isLeft) {
+        nextStrike = (atmStrike > stepFromAtm) 
+        ? atmStrike - stepFromAtm
         : 0;
-
-      uint newRight = atmStrike + (i) * step;
+      } else {
+        nextStrike = atmStrike + stepFromAtm;
+      }
 
       // add left
-      if (!_existsIn(liveStrikes, newLeft) && (newLeft > minStrike) && (newLeft > 0)) {
-        newStrikes[i] = newLeft;
+      if (!_existsIn(liveStrikes, nextStrike) && (nextStrike > minStrike) && (nextStrike < maxStrike)) {
+        newStrikes[i] = nextStrike;
         remainNumStrikes--;
       }
 
@@ -144,15 +150,7 @@ library StrikePriceGenerator {
         break;
       }
 
-      // add right
-      if (!_existsIn(liveStrikes, newRight) && (newRight < maxStrike)) {
-        newStrikes[i+1] = newRight;
-        remainNumStrikes--;
-      }
-
-      if (remainNumStrikes == 0) {
-        break;
-      }
+      isLeft = !isLeft;
     }
   }
 
