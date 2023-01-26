@@ -319,25 +319,6 @@ library StrikePriceGenerator {
   }
 
   /**
-   * @notice Returns n'th element of the strike pivot schema.
-   * @dev Returns n'th element of the sequence from the 0'th element p0=1:
-   *      [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000,
-   *       100000, 200000, 500000, 1000000, 2000000, 5000000, 10000000, 20000000, 50000000,...].
-   *      Uses 300 gas.
-   *      Can maybe be changed to a hardcoded table lookup once we agree we like these pivots.
-   * @param n which element to compute by index
-   * @return pn the n'th element of the sequence
-   */
-  function _nthPivot(uint n) internal view returns (uint pn) {
-    unchecked {
-      if (n > MAX_PIVOT_INDEX + 1) revert PivotIndexAboveMax(n);
-      uint extraPow2 = (n % 3 == 1) ? uint(1) : uint(0);
-      uint extraPow5 = (n % 3 == 2) ? uint(1) : uint(0);
-      pn = 2 ** (n / 3 + extraPow2) * 5 ** (n / 3 + extraPow5);
-    }
-  }
-
-  /**
    * @notice Returns the strike step corresponding to the pivot bucket and the time-to-expiry.
    * @dev Since vol is approx ~ sqrt(T), it makes sense to double the step size
    *      every time tAnnualized is roughly quadripled
@@ -389,6 +370,34 @@ library StrikePriceGenerator {
     }
   }
 
+  /// copied from GWAV.sol
+  function _binarySearch(uint[] storage pivots, uint spot) internal view returns (uint leftNearest) {
+    uint leftPivot;
+    uint rightPivot;
+    uint leftBound;
+    uint rightBound = pivots.length;
+    uint i;
+    while (true) {
+      i = (leftBound + rightBound) / 2;
+      leftPivot = pivots[i];
+      rightPivot = pivots[i + 1];
+
+      bool onRightHalf = leftPivot <= spot;
+
+      // check if we've found the answer!
+      if (onRightHalf && spot <= rightPivot) break;
+
+      // otherwise start next search iteration
+      if (!onRightHalf) {
+        rightBound = i - 1;
+      } else {
+        leftBound = i + 1;
+      }
+    }
+
+    return leftPivot;
+  }
+
   /**
    * @notice Returns the index of the pivot bucket the spot belongs to (i.e. p(n) <= spot < p(n+1)).
    * @param spot Spot price.
@@ -434,6 +443,25 @@ library StrikePriceGenerator {
       else return 1;
     } else {
       return -1;
+    }
+  }
+
+  /**
+   * @notice Returns n'th element of the strike pivot schema.
+   * @dev Returns n'th element of the sequence from the 0'th element p0=1:
+   *      [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000,
+   *       100000, 200000, 500000, 1000000, 2000000, 5000000, 10000000, 20000000, 50000000,...].
+   *      Uses 300 gas.
+   *      Can maybe be changed to a hardcoded table lookup once we agree we like these pivots.
+   * @param n which element to compute by index
+   * @return pn the n'th element of the sequence
+   */
+  function _nthPivot(uint n) internal view returns (uint pn) {
+    unchecked {
+      if (n > MAX_PIVOT_INDEX + 1) revert PivotIndexAboveMax(n);
+      uint extraPow2 = (n % 3 == 1) ? uint(1) : uint(0);
+      uint extraPow5 = (n % 3 == 2) ? uint(1) : uint(0);
+      pn = 2 ** (n / 3 + extraPow2) * 5 ** (n / 3 + extraPow5);
     }
   }
 
