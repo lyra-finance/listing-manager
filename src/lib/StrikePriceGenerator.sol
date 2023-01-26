@@ -105,14 +105,11 @@ library StrikePriceGenerator {
     uint[] memory liveStrikes,
     uint[] storage pivots
   ) public view returns (uint[] memory newStrikes) {
-    // Find the ATM strike and see if it already exists
+    // find the ATM strike and see if it already exists
     (uint atmStrike, uint step) = _findATMStrike(pivots, spot, tTarget);
-    uint strikeRange = int(maxScaledMoneyness.multiplyDecimal(BlackScholes._sqrt(tTarget * UNIT))).exp();
-    uint maxStrike = spot.multiplyDecimal(strikeRange);
-    uint minStrike = spot.divideDecimal(strikeRange);
     uint addAtm = !_existsIn(liveStrikes, atmStrike) ? 1 : 0;
 
-    // Find remaining strike (excluding atm)
+    // find remaining strike (excluding atm)
     int remainNumStrikes = int(maxNumStrikes) - int(liveStrikes.length) - int(addAtm);
     if (remainNumStrikes < 0) {
       // if == 0, then still need to add ATM
@@ -125,8 +122,12 @@ library StrikePriceGenerator {
       newStrikes[0] = atmStrike;
     }
 
-    // starting from ATM strike, go left and right in steps of `step`
-    // record a new strike if it does not exist in liveStrikes and if it is within min/max bounds
+    // find strike range
+    uint strikeRange = int(maxScaledMoneyness.multiplyDecimal(BlackScholes._sqrt(tTarget * UNIT))).exp();
+    uint maxStrike = spot.multiplyDecimal(strikeRange);
+    uint minStrike = spot.divideDecimal(strikeRange);
+
+    // starting from ATM strike, go left and right in steps
     bool isLeft = true;
     uint nextStrike;
     uint stepFromAtm;
@@ -140,7 +141,6 @@ library StrikePriceGenerator {
         nextStrike = atmStrike + stepFromAtm;
       }
 
-      // add left
       if (!_existsIn(liveStrikes, nextStrike) && (nextStrike > minStrike) && (nextStrike < maxStrike)) {
         newStrikes[i] = nextStrike;
         remainNumStrikes--;
@@ -179,23 +179,6 @@ library StrikePriceGenerator {
   function _existsIn(uint[] memory values, uint target) internal view returns (bool exists) {
     unchecked {
       return (_indexOf(values, target) != values.length);
-    }
-  }
-
-  /**
-   * @notice Searches for an arg min of an array.
-   * @param values An array of uint values.
-   * @return idx Index of the smallest element.
-   */
-  function _argMin(uint[] memory values) internal view returns (uint idx) {
-    unchecked {
-      uint min = values[0];
-      for (uint i = 1; i < values.length; i++) {
-        if (values[i] < min) {
-          idx = i;
-          min = values[i];
-        }
-      }
     }
   }
 
