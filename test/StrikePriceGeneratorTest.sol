@@ -5,6 +5,5 @@ import "forge-std/Test.sol";
 import "../src/lib/StrikePriceGenerator.sol";
 
 contract StrikePriceGeneratorTest is Test {
-    function setUp() public {
-    }
+    function setUp() public {}
 }
