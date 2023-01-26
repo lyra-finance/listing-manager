@@ -35,57 +35,24 @@ library StrikePriceGenerator {
     StrikeData[] strikes;
   }
 
-  function createBoard(
-    ExpiryData[] memory expiryArray,
-    uint tTarget, // TODO write up expiry schema and force createBoard() to use that schema as opposed to tTarget?
-    uint spot,
-    uint maxScaledMoneyness,
-    uint maxNumStrikes,
-    uint forceATMSkew,
-    uint[] storage pivots
-  ) public view returns (uint[] memory strikes) {
-    // TODO uint tTarget = getSchemaExpiry(expiryArray,...)
-    uint[] memory liveStrikes = new uint[](0);
-    strikes = getSchemaStrikes(tTarget, spot, maxScaledMoneyness, maxNumStrikes, liveStrikes, pivots);
-  }
-
-  function extendBoard(
-    ExpiryData memory expiryData, 
-    uint spot, 
-    uint maxScaledMoneyness, 
-    uint maxNumStrikes,
-    uint[] storage pivots
-)
-    public
-    view
-    returns (uint[] memory strikes)
-  {
-    uint[] memory liveStrikes = new uint[](expiryData.strikes.length);
-    for (uint i; i < expiryData.strikes.length; i++) {
-      liveStrikes[i] = expiryData.strikes[i].strikePrice;
-    }
-    strikes = getSchemaStrikes(expiryData.tAnnualized, spot, maxScaledMoneyness, maxNumStrikes, liveStrikes, pivots);
-  }
-
   /**
-   * @notice Generates an array of strikes around spot following the schema of this library.
-   * @dev Caller must pre-compute maxScaledMoneyness from the governance parameters.
-   *      Typically one param would be a static MAX_D1, e.g. MAX_D1 = 1.2, which would
-   *      be mapped out of the desired delta range. Since delta=N(d1), if we want to bound
-   *      the delta to say (10, 90) range, we can simply bound d1 to be in (-1.2, 1.2) range.
-   *      Second param would be some approx volatility baseline, e.g. MONEYNESS_SCALER.
-   *      This param can be maintained by governance or taken to be some baseIv GVAW.
-   *      It since d1 = ln(K/S) / (sigma * sqrt(T)), some proxy for sigma is needed to
-   *      solve for K from d1.
-   *      Together, maxScaledMoneyness = MAX_D1 * MONEYNESS_SCALER is expected to be passed here.
+   * @notice Generates an array of new strikes around spot following the schema of this library.
    * @param tTarget The annualized time-to-expiry of the new surface to generate.
    * @param spot Current chainlink spot price.
-   * @param maxScaledMoneyness Max vol-scaled moneyness to generates strike until.
+   * @param maxScaledMoneyness Caller must pre-compute maxScaledMoneyness from governance parameters.
+   *                           Typically one param would be a static MAX_D1, e.g. MAX_D1 = 1.2, which would
+   *                           be mapped out of the desired delta range. Since delta=N(d1), if we want to bound
+   *                           the delta to say (10, 90) range, we can simply bound d1 to be in (-1.2, 1.2) range.
+   *                           Second param would be some approx volatility baseline, e.g. MONEYNESS_SCALER.
+   *                           This param can be maintained by governance or taken to be some baseIv GVAW.
+   *                           It since d1 = ln(K/S) / (sigma * sqrt(T)), some proxy for sigma is needed to
+   *                           solve for K from d1.
+   *                           Together, maxScaledMoneyness = MAX_D1 * MONEYNESS_SCALER is expected to be passed here.
    * @param maxNumStrikes A cap on how many strikes can be in a single board.
    * @param liveStrikes Array of strikes that already exist in the board, will avoid generating them.
    * @return newStrikes The additional strikes that must be added to the board.
    */
-  function getSchemaStrikes(
+  function getNewStrikes(
     uint tTarget,
     uint spot,
     uint maxScaledMoneyness,
@@ -121,7 +88,7 @@ library StrikePriceGenerator {
     uint stepFromAtm;
     for (uint i = 1; i < uint(remainNumStrikes+1); i++) {
       stepFromAtm = i * step;
-      if (isLeft) {
+      if (isLeft) { // prioritize left strike
         nextStrike = (atmStrike > stepFromAtm) 
         ? atmStrike - stepFromAtm
         : 0;
