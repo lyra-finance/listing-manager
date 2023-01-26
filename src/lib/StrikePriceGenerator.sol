@@ -175,19 +175,19 @@ library StrikePriceGenerator {
   ///////////////////
 
   /// copied from GWAV.sol but finds nearest instead of the one on the left
-  function _binarySearch(uint[] storage pivots, uint spot) internal view returns (uint leftNearest) {
+  function _binarySearch(uint[] storage sortedArray, uint target) internal view returns (uint leftNearest) {
     uint leftPivot;
     uint rightPivot;
     uint leftBound = 0;
-    uint rightBound = pivots.length;
+    uint rightBound = sortedArray.length;
     uint i;
     while (true) {
       i = (leftBound + rightBound) / 2;
-      leftPivot = pivots[i];
-      rightPivot = pivots[i + 1];
+      leftPivot = sortedArray[i];
+      rightPivot = sortedArray[i + 1];
 
-      bool onRightHalf = leftPivot <= spot;
-      bool onLeftHalf = spot <= rightPivot;
+      bool onRightHalf = leftPivot <= target;
+      bool onLeftHalf = target <= rightPivot;
 
       // check if we've found the answer!
       if (onRightHalf && onLeftHalf) {
