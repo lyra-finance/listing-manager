@@ -21,16 +21,6 @@ library StrikePriceGenerator {
   using FixedPointMathLib for uint;
   using FixedPointMathLib for int;
 
-  /// @dev For strike extrapolation, slope of totalVol(log-moneyness) is known to be bounded
-  ///      by 2 from Roger-Lee formula for large enough strikes
-  ///      we adopt this bound for all strike extrapolations to avoid unexpected overshooting
-  int private constant MAX_STRIKE_EXTRAPOLATION_SLOPE = 2e18;
-  uint private constant UNIT = 1e18;
-  // when queriying nth element of the strike schema, n is capped at MAX_PIVOT_INDEX to avoid overflow
-  uint private constant MAX_PIVOT_INDEX = 200;
-  // value of the pivot at n = (MAX_PIVOT_INDEX+1), add 1 since we want the right point of the bucket
-  uint private constant MAX_PIVOT = 10 ** 67;
-
   struct StrikeData {
     // strike price
     uint strikePrice;
@@ -123,7 +113,7 @@ library StrikePriceGenerator {
     }
 
     // find strike range
-    uint strikeRange = int(maxScaledMoneyness.multiplyDecimal(BlackScholes._sqrt(tTarget * UNIT))).exp();
+    uint strikeRange = int(maxScaledMoneyness.multiplyDecimal(BlackScholes._sqrt(tTarget * DecimalMath.UNIT))).exp();
     uint maxStrike = spot.multiplyDecimal(strikeRange);
     uint minStrike = spot.divideDecimal(strikeRange);
 
@@ -195,7 +185,7 @@ library StrikePriceGenerator {
    */
   function _strikeToMoneyness(uint strike, uint spot, uint tAnnualized) internal view returns (int moneyness) {
     unchecked {
-      moneyness = int(strike.divideDecimal(spot)).ln().divideDecimal(int(BlackScholes._sqrt(tAnnualized * UNIT)));
+      moneyness = int(strike.divideDecimal(spot)).ln().divideDecimal(int(BlackScholes._sqrt(tAnnualized * DecimalMath.UNIT)));
     }
   }
 
@@ -208,7 +198,7 @@ library StrikePriceGenerator {
    */
   function _moneynessToStrike(int moneyness, uint spot, uint tAnnualized) internal view returns (uint strike) {
     unchecked {
-      strike = moneyness.multiplyDecimal(int(BlackScholes._sqrt(tAnnualized * UNIT))).exp().multiplyDecimal(spot);
+      strike = moneyness.multiplyDecimal(int(BlackScholes._sqrt(tAnnualized * DecimalMath.UNIT))).exp().multiplyDecimal(spot);
     }
   }
 
