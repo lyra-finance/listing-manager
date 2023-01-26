@@ -365,6 +365,7 @@ library StrikePriceGenerator {
    * @return n The index of the pivot bucket the spot belongs to.
    */
 
+   // todo: can remove this extra function and add straight into other function
   function _findNearestPivot(uint[] storage pivots, uint spot) internal view returns (uint) {
     if (spot >= MAX_PIVOT) {
       revert SpotPriceAboveMaxStrike(spot);
