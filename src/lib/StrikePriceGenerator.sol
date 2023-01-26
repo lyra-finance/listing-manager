@@ -95,7 +95,7 @@ library StrikePriceGenerator {
    * @param maxScaledMoneyness Max vol-scaled moneyness to generates strike until.
    * @param maxNumStrikes A cap on how many strikes can be in a single board.
    * @param liveStrikes Array of strikes that already exist in the board, will avoid generating them.
-   * @return strikes The strikes for the new surface following the schema of this library.
+   * @return newStrikes The additional strikes that must be added to the board.
    */
   function getSchemaStrikes(
     uint tTarget,
@@ -104,61 +104,54 @@ library StrikePriceGenerator {
     uint maxNumStrikes,
     uint[] memory liveStrikes,
     uint[] storage pivots
-  ) public view returns (uint[] memory strikes) {
-    // todo [Josh]: should return new strikes, instead of total strikes? Or maybe both
-    uint remainNumStrikes = maxNumStrikes > liveStrikes.length ? maxNumStrikes - liveStrikes.length : uint(0);
-    if (remainNumStrikes == 0) return new uint[](0);
-    uint atmStrike;
-    uint step;
-    (atmStrike, step) = _findATMStrike(pivots, spot, tTarget);
-    uint maxStrike;
-    uint minStrike;
-    {
-      uint strikeScaler = int(maxScaledMoneyness.multiplyDecimal(BlackScholes._sqrt(tTarget * UNIT))).exp();
-      maxStrike = spot.multiplyDecimal(strikeScaler);
-      minStrike = spot.divideDecimal(strikeScaler);
+  ) public view returns (uint[] memory newStrikes) {
+    // Find the ATM strike and see if it already exists
+    (uint atmStrike, uint step) = _findATMStrike(pivots, spot, tTarget);
+    uint strikeRange = int(maxScaledMoneyness.multiplyDecimal(BlackScholes._sqrt(tTarget * UNIT))).exp();
+    uint maxStrike = spot.multiplyDecimal(strikeRange);
+    uint minStrike = spot.divideDecimal(strikeRange);
+    uint addAtm = !_existsIn(liveStrikes, atmStrike) ? 1 : 0;
+
+    // Find remaining strike (excluding atm)
+    int remainNumStrikes = int(maxNumStrikes) - int(liveStrikes.length) - int(addAtm);
+    if (remainNumStrikes < 0) {
+      // if == 0, then still need to add ATM
+      return newStrikes;
     }
-    bool addAtm = (!_existsIn(liveStrikes, atmStrike));
-    // remainNumStrikes == 0 is handled above, subbing 1 is safe
-    remainNumStrikes -= (addAtm ? uint(1) : uint(0));
-    uint[] memory strikesLeft = new uint[](remainNumStrikes);
-    uint[] memory strikesRight = new uint[](remainNumStrikes);
-    uint nLeft;
-    uint nRight;
-    // starting from ATM strike, go left and right in steps of step
+
+    // add atm strike first
+    newStrikes = new uint[](uint(remainNumStrikes+1));
+    if (addAtm == 1) {
+      newStrikes[0] = atmStrike;
+    }
+
+    // starting from ATM strike, go left and right in steps of `step`
     // record a new strike if it does not exist in liveStrikes and if it is within min/max bounds
-    for (uint i = 0; i < remainNumStrikes; i++) {
-      // todo [Josh]: can probably remove this if by formatting pivots differently
-      uint newLeft = (atmStrike > (i + 1) * step) ? atmStrike - (i + 1) * step : uint(0);
-      uint newRight = atmStrike + (i + 1) * step;
-      if (remainNumStrikes - nLeft - nRight == 0) break;
-      // todo [Josh]: newLeft > 0 is guaranteed
+    for (uint i = 1; i < uint(remainNumStrikes+1); i++) {
+      uint newLeft = (atmStrike > (i + 1) * step) 
+        ? atmStrike - (i) * step 
+        : 0;
+
+      uint newRight = atmStrike + (i) * step;
+
+      // add left
       if (!_existsIn(liveStrikes, newLeft) && (newLeft > minStrike) && (newLeft > 0)) {
-        strikesLeft[i] = newLeft;
-        nLeft++;
+        newStrikes[i] = newLeft;
+        remainNumStrikes--;
       }
-      // quirk: if there's 1 strike remaining, the left is added first, the below can break the loop
-      // this means left strikes are somewhat "prioritized"
-      if (remainNumStrikes - nLeft - nRight == 0) break;
+
+      if (remainNumStrikes == 0) {
+        break;
+      }
+
+      // add right
       if (!_existsIn(liveStrikes, newRight) && (newRight < maxStrike)) {
-        strikesRight[i] = newRight;
-        nRight++;
+        newStrikes[i+1] = newRight;
+        remainNumStrikes--;
       }
-    }
-    // fill in strikes array, maintaining the sorted order
-    // todo [Josh]: can probably do this in place somehow
-    strikes = new uint[](nLeft + nRight + (addAtm ? uint(1) : uint(0)));
-    if (addAtm) strikes[nLeft] = atmStrike;
-    for (uint i = 0; i < strikesLeft.length; i++) {
-      if (strikesLeft[i] != 0) {
-        nLeft--;
-        strikes[nLeft] = strikesLeft[i];
-      }
-    }
-    for (uint i = 0; i < strikesRight.length; i++) {
-      if (strikesRight[i] != 0) {
-        nRight--;
-        strikes[strikes.length - nRight - 1] = strikesRight[i];
+
+      if (remainNumStrikes == 0) {
+        break;
       }
     }
   }
@@ -269,35 +262,8 @@ library StrikePriceGenerator {
    * @return strike The first strike satisfying strike <= spot < (strike + step).
    */
   function _findATMStrike(uint[] storage pivots, uint spot, uint tAnnualized) internal view returns (uint strike, uint step) {
-    unchecked {
-      strike = _findNearestPivot(pivots, spot);
-      step = _strikeStep(strike, tAnnualized);
-      while (true) {
-        // by construction, we start with strike <= spot
-        // return the first strike such that strike <= spot < (strike + step)
-        // round to the closest between strike and (strike + step)
-        // TODO simplification candidate - can have a convention to round to left
-        // but then probably change the left/right fill priority to be right (currently left is added first)
-        if (spot < strike + step) {
-          uint distanceLeft = spot - strike;
-          uint distanceRight = (strike + step) - spot;
-          strike = (distanceRight < distanceLeft) ? strike + step : strike;
-          return (strike, step);
-        }
-        strike += step;
-      }
-    }
-  }
 
-  /**
-   * @notice Returns the index of the pivot bucket the spot belongs to (i.e. p(n) <= spot < p(n+1)).
-   * @param spot Spot price.
-   * @return n The index of the pivot bucket the spot belongs to.
-   */
-
-   // todo: can remove this extra function and add straight into other function
-  function _findNearestPivot(uint[] storage pivots, uint spot) internal view returns (uint) {
-    if (spot >= MAX_PIVOT) {
+    if (spot >= pivots[pivots.length-1]) {
       revert SpotPriceAboveMaxStrike(spot);
     }
 
@@ -305,10 +271,24 @@ library StrikePriceGenerator {
       revert SpotPriceIsZero(spot);
     }
 
-    return _binarySearch(pivots, spot);
-
+    strike = _binarySearch(pivots, spot);
+    step = _strikeStep(strike, tAnnualized);
+    while (true) {
+      // by construction, we start with strike <= spot
+      // return the first strike such that strike <= spot < (strike + step)
+      // round to the closest between strike and (strike + step)
+      // TODO simplification candidate - can have a convention to round to left
+      // but then probably change the left/right fill priority to be right (currently left is added first)
+      if (spot < strike + step) {
+        uint distanceLeft = spot - strike;
+        uint distanceRight = (strike + step) - spot;
+        strike = (distanceRight < distanceLeft) ? strike + step : strike;
+        return (strike, step);
+      }
+      strike += step;
+    }
+    
   }
-
 
   /// copied from GWAV.sol
   function _binarySearch(uint[] storage pivots, uint spot) internal view returns (uint leftNearest) {
