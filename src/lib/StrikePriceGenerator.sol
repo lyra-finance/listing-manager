@@ -163,24 +163,6 @@ library StrikePriceGenerator {
     }
   }
 
-  /**
-   * @notice Searches for an index such that inserting target at that index preserves array order.
-   * @dev this is equivalent in output & behaviour to numpy's `left` searchsorted
-   *      https://numpy.org/doc/stable/reference/generated/numpy.searchsorted.html
-   * @param values A sorted array of uint values.
-   * @param target Target value to search.
-   * @return idx Index in values array such that inserting target at that index would preserve sorting.
-   */
-  function _searchSorted(uint[] memory values, uint target) internal view returns (uint idx) {
-    unchecked {
-      if (target <= values[0]) return 0;
-      if (target > values[values.length - 1]) return values.length;
-      for (uint i = 0; i < values.length - 1; i++) {
-        if ((target > values[i]) && (target <= values[i + 1])) return (i + 1);
-      }
-      return values.length; // this should never happen since the above captures all cases
-    }
-  }
 
   /**
    * @notice Searches for an exact match of target in values[].
