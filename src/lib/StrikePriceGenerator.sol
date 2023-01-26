@@ -53,14 +53,21 @@ library StrikePriceGenerator {
     uint spot,
     uint maxScaledMoneyness,
     uint maxNumStrikes,
-    uint forceATMSkew
+    uint forceATMSkew,
+    uint[] storage pivots
   ) public view returns (uint[] memory strikes) {
     // TODO uint tTarget = getSchemaExpiry(expiryArray,...)
     uint[] memory liveStrikes = new uint[](0);
-    strikes = getSchemaStrikes(tTarget, spot, maxScaledMoneyness, maxNumStrikes, liveStrikes);
+    strikes = getSchemaStrikes(tTarget, spot, maxScaledMoneyness, maxNumStrikes, liveStrikes, pivots);
   }
 
-  function extendBoard(ExpiryData memory expiryData, uint spot, uint maxScaledMoneyness, uint maxNumStrikes)
+  function extendBoard(
+    ExpiryData memory expiryData, 
+    uint spot, 
+    uint maxScaledMoneyness, 
+    uint maxNumStrikes,
+    uint[] storage pivots
+)
     public
     view
     returns (uint[] memory strikes)
@@ -69,7 +76,7 @@ library StrikePriceGenerator {
     for (uint i; i < expiryData.strikes.length; i++) {
       liveStrikes[i] = expiryData.strikes[i].strikePrice;
     }
-    strikes = getSchemaStrikes(expiryData.tAnnualized, spot, maxScaledMoneyness, maxNumStrikes, liveStrikes);
+    strikes = getSchemaStrikes(expiryData.tAnnualized, spot, maxScaledMoneyness, maxNumStrikes, liveStrikes, pivots);
   }
 
   /**
@@ -95,14 +102,15 @@ library StrikePriceGenerator {
     uint spot,
     uint maxScaledMoneyness,
     uint maxNumStrikes,
-    uint[] memory liveStrikes
+    uint[] memory liveStrikes,
+    uint[] storage pivots
   ) public view returns (uint[] memory strikes) {
     // todo [Josh]: should return new strikes, instead of total strikes? Or maybe both
     uint remainNumStrikes = maxNumStrikes > liveStrikes.length ? maxNumStrikes - liveStrikes.length : uint(0);
     if (remainNumStrikes == 0) return new uint[](0);
     uint atmStrike;
     uint step;
-    (atmStrike, step) = _findATMStrike(spot, tTarget);
+    (atmStrike, step) = _findATMStrike(pivots, spot, tTarget);
     uint maxStrike;
     uint minStrike;
     {
@@ -348,10 +356,9 @@ library StrikePriceGenerator {
    * @param tAnnualized Years to expiry, 18 decimals.
    * @return strike The first strike satisfying strike <= spot < (strike + step).
    */
-  function _findATMStrike(uint spot, uint tAnnualized) internal view returns (uint strike, uint step) {
+  function _findATMStrike(uint[] storage pivots, uint spot, uint tAnnualized) internal view returns (uint strike, uint step) {
     unchecked {
-      uint n = _findSpotPivot(spot);
-      strike = _nthPivot(n);
+      strike = _findNearestPivot(pivots, spot);
       step = _strikeStep(strike, tAnnualized);
       while (true) {
         // by construction, we start with strike <= spot
@@ -369,6 +376,26 @@ library StrikePriceGenerator {
       }
     }
   }
+
+  /**
+   * @notice Returns the index of the pivot bucket the spot belongs to (i.e. p(n) <= spot < p(n+1)).
+   * @param spot Spot price.
+   * @return n The index of the pivot bucket the spot belongs to.
+   */
+
+  function _findNearestPivot(uint[] storage pivots, uint spot) internal view returns (uint) {
+    if (spot >= MAX_PIVOT) {
+      revert SpotPriceAboveMaxStrike(spot);
+    }
+
+    if (spot == 0) {
+      revert SpotPriceIsZero(spot);
+    }
+
+    return _binarySearch(pivots, spot);
+
+  }
+
 
   /// copied from GWAV.sol
   function _binarySearch(uint[] storage pivots, uint spot) internal view returns (uint leftNearest) {
@@ -396,73 +423,6 @@ library StrikePriceGenerator {
     }
 
     return leftPivot;
-  }
-
-  /**
-   * @notice Returns the index of the pivot bucket the spot belongs to (i.e. p(n) <= spot < p(n+1)).
-   * @param spot Spot price.
-   * @return n The index of the pivot bucket the spot belongs to.
-   */
-
-  // todo [Josh]: change this to pass in for constructor
-  function _findSpotPivot(uint spot) internal view returns (uint n) {
-    unchecked {
-      if (spot >= MAX_PIVOT) revert SpotPriceAboveMaxStrike(spot);
-      if (spot == 0) revert SpotPriceIsZero(spot);
-      uint a = 0;
-      uint b = MAX_PIVOT_INDEX;
-      n = (a + b) / 2; // initial guess for the bucket that spot belongs to
-      while (true) {
-        int8 spotDirection = _getSpotDirection(n, spot);
-        if (spotDirection == int8(0)) {
-          return n;
-        }
-        if (spotDirection == int8(1)) {
-          a = n;
-          n = (a + b) / 2;
-        } else {
-          b = n;
-          n = (a + b) / 2;
-        }
-      }
-    }
-  }
-
-  /**
-   * @notice Returns whether the spot is between p(n) and p(n+1), below p(n), or above p(n+1)
-   * @dev A helper for _findSpotPivot()._divideDecimalRound(y, precisionUnit);
-   * @param spot Spot price.
-   * @param n The pivot index to check.
-   * @return direction 0 if p(n) <= spot < p(n+1), 1 if spot >= p(n+1), -1 if spot < p(n)
-   */
-  function _getSpotDirection(uint n, uint spot) internal view returns (int8 direction) {
-    uint p0 = _nthPivot(n);
-    if (spot >= p0) {
-      uint p1 = _nthPivot(n + 1);
-      if (spot < p1) return 0;
-      else return 1;
-    } else {
-      return -1;
-    }
-  }
-
-  /**
-   * @notice Returns n'th element of the strike pivot schema.
-   * @dev Returns n'th element of the sequence from the 0'th element p0=1:
-   *      [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000,
-   *       100000, 200000, 500000, 1000000, 2000000, 5000000, 10000000, 20000000, 50000000,...].
-   *      Uses 300 gas.
-   *      Can maybe be changed to a hardcoded table lookup once we agree we like these pivots.
-   * @param n which element to compute by index
-   * @return pn the n'th element of the sequence
-   */
-  function _nthPivot(uint n) internal view returns (uint pn) {
-    unchecked {
-      if (n > MAX_PIVOT_INDEX + 1) revert PivotIndexAboveMax(n);
-      uint extraPow2 = (n % 3 == 1) ? uint(1) : uint(0);
-      uint extraPow5 = (n % 3 == 2) ? uint(1) : uint(0);
-      pn = 2 ** (n / 3 + extraPow2) * 5 ** (n / 3 + extraPow5);
-    }
   }
 
   ////////////
