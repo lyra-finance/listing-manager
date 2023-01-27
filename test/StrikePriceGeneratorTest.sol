@@ -110,6 +110,36 @@ contract StrikePriceGeneratorTest is Test {
     );
   }
 
+  ////////////////////
+  // Get ATM Strike //
+  ////////////////////
+
+  function testGetsNearestStrikeForATM() public {
+    // unlike getLeftNearestPivot, gets nearest strike
+    assertEq(
+      tester.getATMStrike(1357e18, 1000e18, 100e18),
+      1400e18
+    );
+
+    assertEq(
+      tester.getATMStrike(1_456_357e18, 1_000_000e18, 50e18),
+      1_456_350e18
+    );
+  }
+
+  function testGetsPivotIfCloseset() public {
+    assertEq(
+      tester.getATMStrike(10_057e18, 10_000e18, 200e18),
+      10_000e18
+    );
+
+    assertEq(
+      tester.getATMStrike(1_856e15, 1e18, 500e15),
+      2e18
+    );
+  }
+
+
   /////////////
   // Helpers //
   /////////////
