@@ -9,8 +9,11 @@ import "../src/lib/StrikePriceGenerator.sol";
 contract StrikePriceTester {
   uint[] pivots;
   constructor(uint[] memory _pivots) {
-    pivots = _pivots;
+    for (uint i; i < _pivots.length; i++) {
+      pivots.push(_pivots[i] * 1e18);
+    }
   }
+
   function getNewStrikes(
     uint tTarget,
     uint spot,
@@ -70,9 +73,9 @@ contract StrikePriceGeneratorTest is Test {
   function testSpotAboveMaxPivot() public {
     vm.expectRevert(abi.encodeWithSelector(
       StrikePriceGenerator.SpotPriceAboveMaxStrike.selector,
-      pivots[pivots.length - 1]
+      pivots[pivots.length - 1] * 1e18
     ));
-    tester.getLeftNearestPivot(2_000_000_000_000);
+    tester.getLeftNearestPivot(2_000_000_000_000e18);
   }
 
   function testSpotIsZero() public {
@@ -81,5 +84,40 @@ contract StrikePriceGeneratorTest is Test {
     );
     tester.getLeftNearestPivot(0);
   }
+
+  function testChoosesLeftNearest() public {
+    // takes left nearest even if closer to the right pivot
+    assertEq(
+      tester.getLeftNearestPivot(1_934_568e18),
+      1_000_000e18
+    );
+
+    // chooses pivot if exactly on pivot
+    assertEq(
+      tester.getLeftNearestPivot(5000e18),
+      5000e18
+    );
+
+    // couple random examples
+    assertEq(
+      tester.getLeftNearestPivot(165e16),
+      1e18
+    );
+
+    assertEq(
+      tester.getLeftNearestPivot(1550e18),
+      1000e18
+    );
+  }
+
+  /////////////
+  // Helpers //
+  /////////////
+
+  // function _convertTo18(uint[] memory inputs) internal pure {
+  //   for (uint i; i < inputs.length; i++) {
+  //     inputs[i] = inputs[i] * DecimalMath.UNIT;
+  //   }
+  // }
 
 }
