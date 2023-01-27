@@ -27,6 +27,22 @@ contract StrikePriceTester {
       pivots
     );
   }
+
+  function getLeftNearestPivot(uint spot) public view returns (uint) {
+    return StrikePriceGenerator.getLeftNearestPivot(pivots, spot);
+  }
+
+  function getStep(uint nearestPivot, uint tTarget) public view returns (uint) {
+    return StrikePriceGenerator.getStep(nearestPivot, tTarget);
+  }
+
+  function getATMStrike(uint spot, uint nearestPivot, uint step) public view returns (uint) {
+    return StrikePriceGenerator.getATMStrike(spot, nearestPivot, step);
+  }
+
+  function getStrikeRange(uint tTarget, uint spot, uint maxScaledMoneyness) public view returns (uint, uint) {
+    return StrikePriceGenerator.getStrikeRange(tTarget, spot, maxScaledMoneyness);
+  }
 }
 
 contract StrikePriceGeneratorTest is Test {

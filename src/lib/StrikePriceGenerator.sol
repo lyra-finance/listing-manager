@@ -45,11 +45,11 @@ library StrikePriceGenerator {
     uint[] storage pivots
   ) public view returns (uint[] memory newStrikes) {
     // find step size and the nearest pivot
-    uint nearestPivot = _getLeftNearestPivot(pivots, spot);
-    uint step = _getStep(nearestPivot, tTarget);
+    uint nearestPivot = getLeftNearestPivot(pivots, spot);
+    uint step = getStep(nearestPivot, tTarget);
 
     // find the ATM strike and see if it already exists
-    (uint atmStrike) = _getATMStrike(spot, nearestPivot, step);
+    (uint atmStrike) = getATMStrike(spot, nearestPivot, step);
     uint addAtm = !_existsIn(liveStrikes, atmStrike) ? 1 : 0;
 
     // find remaining strike (excluding atm)
@@ -66,7 +66,7 @@ library StrikePriceGenerator {
     }
 
     // find strike range
-    (uint minStrike, uint maxStrike) = _getStrikeRange(tTarget, spot, maxScaledMoneyness);
+    (uint minStrike, uint maxStrike) = getStrikeRange(tTarget, spot, maxScaledMoneyness);
 
     // starting from ATM strike, go left and right in steps
     bool isLeft = true;
@@ -104,7 +104,7 @@ library StrikePriceGenerator {
    * @param spot Spot price
    * @return nearestPivot left nearest pivot
    */
-  function _getLeftNearestPivot(uint[] storage pivots, uint spot) internal view returns (uint nearestPivot) {
+  function getLeftNearestPivot(uint[] storage pivots, uint spot) public view returns (uint nearestPivot) {
     if (spot >= pivots[pivots.length - 1]) {
       revert SpotPriceAboveMaxStrike(spot);
     }
@@ -124,7 +124,7 @@ library StrikePriceGenerator {
    * @param step Step size
    * @return atmStrike The first strike satisfying strike <= spot < (strike + step)
    */
-  function _getATMStrike(uint spot, uint pivot, uint step) internal pure returns (uint atmStrike) {
+  function getATMStrike(uint spot, uint pivot, uint step) public pure returns (uint atmStrike) {
     atmStrike = pivot;
     while (true) {
       uint nextStrike = atmStrike + step;
@@ -138,8 +138,8 @@ library StrikePriceGenerator {
     }
   }
 
-  function _getStrikeRange(uint tTarget, uint spot, uint maxScaledMoneyness)
-    internal
+  function getStrikeRange(uint tTarget, uint spot, uint maxScaledMoneyness)
+    public
     pure
     returns (uint minStrike, uint maxStrike)
   {
@@ -155,7 +155,7 @@ library StrikePriceGenerator {
    * @param tAnnualized Years to expiry, 18 decimals.
    * @return step The strike step size at this pivot and tAnnualized.
    */
-  function _getStep(uint p, uint tAnnualized) internal pure returns (uint step) {
+  function getStep(uint p, uint tAnnualized) public pure returns (uint step) {
     unchecked {
       // TODO make these magic numbers into params, e.g. struct/duoble array as input?
       uint div;
