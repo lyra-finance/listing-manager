@@ -53,14 +53,14 @@ library StrikePriceGenerator {
     uint addAtm = !_existsIn(liveStrikes, atmStrike) ? 1 : 0;
 
     // find remaining strike (excluding atm)
-    int remainNumStrikes = int(maxNumStrikes) - int(liveStrikes.length) - int(addAtm);
-    if (remainNumStrikes < 0) {
+    int remainNumStrikes = int(maxNumStrikes) - int(liveStrikes.length);
+    if (remainNumStrikes <= 0) {
       // if == 0, then still need to add ATM
       return newStrikes;
     }
 
     // add atm strike first
-    newStrikes = new uint[](uint(remainNumStrikes+1));
+    newStrikes = new uint[](uint(remainNumStrikes));
     if (addAtm == 1) {
       newStrikes[0] = atmStrike;
     }
@@ -72,7 +72,7 @@ library StrikePriceGenerator {
     bool isLeft = true;
     uint nextStrike;
     uint stepFromAtm;
-    for (uint i = 1; i < uint(remainNumStrikes + 1); i++) {
+    for (uint i = addAtm; i < uint(remainNumStrikes); i++) {
       stepFromAtm = i * step;
       if (isLeft) {
         // prioritize left strike
