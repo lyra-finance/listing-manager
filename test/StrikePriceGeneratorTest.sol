@@ -47,13 +47,14 @@ contract StrikePriceTester {
 
 contract StrikePriceGeneratorTest is Test {
   using stdJson for string;
+  uint[] pivots;
 
   StrikePriceTester tester;
   function setUp() public {
     // load pivots.json into strikePriceTester
     string memory path = string.concat(vm.projectRoot(), "/script/params/pivots.json");
     string memory json = vm.readFile(path);
-    uint[] memory pivots = json.readUintArray(".pivots");
+    pivots = json.readUintArray(".pivots");
     tester = new StrikePriceTester(pivots);
   }
 
@@ -61,8 +62,24 @@ contract StrikePriceGeneratorTest is Test {
   // Get New Strikes //
   /////////////////////
 
-  function test() public {
 
+  //////////////////////
+  // Get Left Nearest //
+  //////////////////////
+
+  function testSpotAboveMaxPivot() public {
+    vm.expectRevert(abi.encodeWithSelector(
+      StrikePriceGenerator.SpotPriceAboveMaxStrike.selector,
+      pivots[pivots.length - 1]
+    ));
+    tester.getLeftNearestPivot(2_000_000_000_000);
+  }
+
+  function testSpotIsZero() public {
+    vm.expectRevert(
+      StrikePriceGenerator.SpotPriceIsZero.selector
+    );
+    tester.getLeftNearestPivot(0);
   }
 
 }

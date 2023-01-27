@@ -105,12 +105,13 @@ library StrikePriceGenerator {
    * @return nearestPivot left nearest pivot
    */
   function getLeftNearestPivot(uint[] storage pivots, uint spot) public view returns (uint nearestPivot) {
-    if (spot >= pivots[pivots.length - 1]) {
-      revert SpotPriceAboveMaxStrike(spot);
+    uint maxPivot = pivots[pivots.length - 1];
+    if (spot >=  maxPivot) {
+      revert SpotPriceAboveMaxStrike(maxPivot);
     }
 
     if (spot == 0) {
-      revert SpotPriceIsZero(spot);
+      revert SpotPriceIsZero();
     }
 
     // finds the nearest pivot
@@ -223,6 +224,6 @@ library StrikePriceGenerator {
   ////////////
   // Errors //
   ////////////
-  error SpotPriceAboveMaxStrike(uint spot);
-  error SpotPriceIsZero(uint spot);
+  error SpotPriceAboveMaxStrike(uint maxPivot);
+  error SpotPriceIsZero();
 }
