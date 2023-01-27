@@ -4,6 +4,7 @@ out = 'out'
 
 optimizer = true
 optimizer_runs = 10_000
+fs_permissions = [{access = "read", path = "./"}]
 
 [fmt]
 line_length = 120
