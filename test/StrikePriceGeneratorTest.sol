@@ -37,9 +37,7 @@ contract StrikePriceGeneratorTest is Test {
     // load pivots.json into strikePriceTester
     string memory path = string.concat(vm.projectRoot(), "/script/params/pivots.json");
     string memory json = vm.readFile(path);
-    console2.log(json);
-    // uint[] memory pivots = json.readUintArray(".pivots[]");
-    uint[] memory pivots = abi.decode(stdJson.parseRaw(json, ".pivots"), (uint256[]));
+    uint[] memory pivots = json.readUintArray(".pivots");
     tester = new StrikePriceTester(pivots);
   }
 
