@@ -156,18 +156,23 @@ library StrikePriceGenerator {
    * @param tAnnualized Years to expiry, 18 decimals.
    * @return step The strike step size at this pivot and tAnnualized.
    */
-  function getStep(uint p, uint tAnnualized) public pure returns (uint step) {
+  function getStep(uint p, uint tAnnualized) public pure returns (uint step) {    
     unchecked {
-      // TODO make these magic numbers into params, e.g. struct/duoble array as input?
       uint div;
-      if (tAnnualized * (365 days) <= (1 weeks * 1e18)) div = 40;
-      else if (tAnnualized * (365 days) <= (4 weeks * 1e18)) div = 20;
-      else if (tAnnualized * (365 days) <= (12 weeks * 1e18)) div = 10;
-      else div = 5;
-      step = p / div;
-      // floor step at 1e-18 in case the pivot supplied is too small and the div rounds to 0
-      step = (step == 0) ? 1 : step;
-      return step;
+      if (tAnnualized * (365 days) <= (1 weeks * 1e18)) {
+        div = 40; // 2.5%
+      } else if (tAnnualized * (365 days) <= (4 weeks * 1e18)) {
+        div = 20; // 5% 
+      } else if (tAnnualized * (365 days) <= (12 weeks * 1e18)) {
+        div = 10; // 10% 
+      } else {
+        div = 5; // 20%
+      }
+      
+      if (p <= div) {
+        revert PivotLessThanOrEqualToStepDiv(p, div);
+      }
+      return p / div;
     }
   }
 
@@ -226,4 +231,5 @@ library StrikePriceGenerator {
   ////////////
   error SpotPriceAboveMaxStrike(uint maxPivot);
   error SpotPriceIsZero();
+  error PivotLessThanOrEqualToStepDiv(uint pivot, uint div);
 }

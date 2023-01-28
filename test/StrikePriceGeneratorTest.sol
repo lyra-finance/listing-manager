@@ -7,7 +7,9 @@ import "forge-std/StdJson.sol";
 import "../src/lib/StrikePriceGenerator.sol";
 
 contract StrikePriceTester {
+  // todo [Josh]: can probably hardcode
   uint[] pivots;
+
   constructor(uint[] memory _pivots) {
     for (uint i; i < _pivots.length; i++) {
       pivots.push(_pivots[i] * 1e18);
@@ -136,6 +138,65 @@ contract StrikePriceGeneratorTest is Test {
     assertEq(
       tester.getATMStrike(1_856e15, 1e18, 500e15),
       2e18
+    );
+  }
+
+  //////////////////////
+  // Get Strike Range //
+  //////////////////////
+
+
+  //////////////
+  // Get Step //
+  //////////////
+
+  function testBlocksTinyPivots() public {
+    vm.expectRevert(abi.encodeWithSelector(
+      StrikePriceGenerator.PivotLessThanOrEqualToStepDiv.selector,
+      40,
+      40
+    ));
+
+    tester.getStep(40, uint(1 days) * 1e18 / uint(365 days));
+
+  }
+
+  function testGetsCorrectTimeHorizon() public {
+    assertEq(
+      tester.getStep(1000e18, uint(3 days) * 1e18 / uint(365 days)),
+      25e18
+    );
+
+    assertEq(
+      tester.getStep(1000e18, uint(3 weeks) * 1e18 / uint(365 days)),
+      50e18
+    );
+
+    assertEq(
+      tester.getStep(1000e18, uint(6 weeks) * 1e18 / uint(365 days)),
+      100e18
+    );
+
+    assertEq(
+      tester.getStep(1000e18, uint(104 weeks) * 1e18 / uint(365 days)),
+      200e18
+    );
+  } 
+
+  function testGetsCorrectAbsStep() public {
+    assertEq(
+      tester.getStep(5000e18, uint(6 weeks) * 1e18 / uint(365 days)),
+      500e18
+    );
+
+    assertEq(
+      tester.getStep(13_456_000e18, uint(5 days) * 1e18 / uint(365 days)),
+      336_400e18
+    );
+
+    assertEq(
+      tester.getStep(1e18, uint(100 weeks) * 1e18 / uint(365 days)),
+      2e17
     );
   }
 
