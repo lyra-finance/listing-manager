@@ -210,8 +210,6 @@ library StrikePriceGenerator {
         leftBound = i + 1;
       }
     }
-
-    return leftPivot;
   }
 
   /**
