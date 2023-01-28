@@ -7,6 +7,8 @@ import "newport/synthetix/DecimalMath.sol";
 import "newport/libraries/FixedPointMathLib.sol";
 import "newport/libraries/BlackScholes.sol";
 
+import "forge-std/console2.sol";
+
 /**
  * @title Automated strike price generator
  * @author Lyra
@@ -45,35 +47,38 @@ library StrikePriceGenerator {
     uint[] storage pivots
   ) public view returns (uint[] memory newStrikes) {
     // find step size and the nearest pivot
-    uint nearestPivot = _getLeftNearestPivot(pivots, spot);
-    uint step = _getStep(nearestPivot, tTarget);
+    uint nearestPivot = getLeftNearestPivot(pivots, spot);
+    uint step = getStep(nearestPivot, tTarget);
 
     // find the ATM strike and see if it already exists
-    (uint atmStrike) = _getATMStrike(spot, nearestPivot, step);
+    (uint atmStrike) = getATMStrike(spot, nearestPivot, step);
     uint addAtm = !_existsIn(liveStrikes, atmStrike) ? 1 : 0;
 
     // find remaining strike (excluding atm)
-    int remainNumStrikes = int(maxNumStrikes) - int(liveStrikes.length) - int(addAtm);
-    if (remainNumStrikes < 0) {
+    int remainNumStrikes = int(maxNumStrikes) - int(liveStrikes.length);
+    if (remainNumStrikes <= 0) {
       // if == 0, then still need to add ATM
       return newStrikes;
     }
 
     // add atm strike first
-    newStrikes = new uint[](uint(remainNumStrikes+1));
+    newStrikes = new uint[](uint(remainNumStrikes));
     if (addAtm == 1) {
       newStrikes[0] = atmStrike;
+      remainNumStrikes--;
     }
 
     // find strike range
-    (uint minStrike, uint maxStrike) = _getStrikeRange(tTarget, spot, maxScaledMoneyness);
+    (uint minStrike, uint maxStrike) = getStrikeRange(tTarget, spot, maxScaledMoneyness);
 
     // starting from ATM strike, go left and right in steps
     bool isLeft = true;
     uint nextStrike;
     uint stepFromAtm;
-    for (uint i = 1; i < uint(remainNumStrikes + 1); i++) {
-      stepFromAtm = i * step;
+    uint i = 0;
+    uint numAdded = addAtm;
+    while (remainNumStrikes > 0) {
+      stepFromAtm = (1 + (i / 2)) * step;
       if (isLeft) {
         // prioritize left strike
         nextStrike = (atmStrike > stepFromAtm) ? atmStrike - stepFromAtm : 0;
@@ -82,15 +87,12 @@ library StrikePriceGenerator {
       }
 
       if (!_existsIn(liveStrikes, nextStrike) && (nextStrike > minStrike) && (nextStrike < maxStrike)) {
-        newStrikes[i] = nextStrike;
+        newStrikes[numAdded++] = nextStrike;
         remainNumStrikes--;
       }
 
-      if (remainNumStrikes == 0) {
-        break;
-      }
-
       isLeft = !isLeft;
+      i++;
     }
   }
 
@@ -104,13 +106,14 @@ library StrikePriceGenerator {
    * @param spot Spot price
    * @return nearestPivot left nearest pivot
    */
-  function _getLeftNearestPivot(uint[] storage pivots, uint spot) internal view returns (uint nearestPivot) {
-    if (spot >= pivots[pivots.length - 1]) {
-      revert SpotPriceAboveMaxStrike(spot);
+  function getLeftNearestPivot(uint[] storage pivots, uint spot) public view returns (uint nearestPivot) {
+    uint maxPivot = pivots[pivots.length - 1];
+    if (spot >= maxPivot) {
+      revert SpotPriceAboveMaxStrike(maxPivot);
     }
 
     if (spot == 0) {
-      revert SpotPriceIsZero(spot);
+      revert SpotPriceIsZero();
     }
 
     // finds the nearest pivot
@@ -124,7 +127,7 @@ library StrikePriceGenerator {
    * @param step Step size
    * @return atmStrike The first strike satisfying strike <= spot < (strike + step)
    */
-  function _getATMStrike(uint spot, uint pivot, uint step) internal pure returns (uint atmStrike) {
+  function getATMStrike(uint spot, uint pivot, uint step) public pure returns (uint atmStrike) {
     atmStrike = pivot;
     while (true) {
       uint nextStrike = atmStrike + step;
@@ -138,8 +141,8 @@ library StrikePriceGenerator {
     }
   }
 
-  function _getStrikeRange(uint tTarget, uint spot, uint maxScaledMoneyness)
-    internal
+  function getStrikeRange(uint tTarget, uint spot, uint maxScaledMoneyness)
+    public
     pure
     returns (uint minStrike, uint maxStrike)
   {
@@ -155,18 +158,23 @@ library StrikePriceGenerator {
    * @param tAnnualized Years to expiry, 18 decimals.
    * @return step The strike step size at this pivot and tAnnualized.
    */
-  function _getStep(uint p, uint tAnnualized) internal pure returns (uint step) {
+  function getStep(uint p, uint tAnnualized) public pure returns (uint step) {
     unchecked {
-      // TODO make these magic numbers into params, e.g. struct/duoble array as input?
       uint div;
-      if (tAnnualized * (365 days) <= (1 weeks * 1e18)) div = 40;
-      else if (tAnnualized * (365 days) <= (4 weeks * 1e18)) div = 20;
-      else if (tAnnualized * (365 days) <= (12 weeks * 1e18)) div = 10;
-      else div = 5;
-      step = p / div;
-      // floor step at 1e-18 in case the pivot supplied is too small and the div rounds to 0
-      step = (step == 0) ? 1 : step;
-      return step;
+      if (tAnnualized * (365 days) <= (1 weeks * 1e18)) {
+        div = 40; // 2.5%
+      } else if (tAnnualized * (365 days) <= (4 weeks * 1e18)) {
+        div = 20; // 5%
+      } else if (tAnnualized * (365 days) <= (12 weeks * 1e18)) {
+        div = 10; // 10%
+      } else {
+        div = 5; // 20%
+      }
+
+      if (p <= div) {
+        revert PivotLessThanOrEqualToStepDiv(p, div);
+      }
+      return p / div;
     }
   }
 
@@ -192,7 +200,7 @@ library StrikePriceGenerator {
 
       // check if we've found the answer!
       if (onRightHalf && onLeftHalf) {
-        return leftPivot;
+        return (target == rightPivot) ? rightPivot : leftPivot;
       }
 
       // otherwise start next search iteration
@@ -202,8 +210,6 @@ library StrikePriceGenerator {
         leftBound = i + 1;
       }
     }
-
-    return leftPivot;
   }
 
   /**
@@ -223,6 +229,7 @@ library StrikePriceGenerator {
   ////////////
   // Errors //
   ////////////
-  error SpotPriceAboveMaxStrike(uint spot);
-  error SpotPriceIsZero(uint spot);
+  error SpotPriceAboveMaxStrike(uint maxPivot);
+  error SpotPriceIsZero();
+  error PivotLessThanOrEqualToStepDiv(uint pivot, uint div);
 }
