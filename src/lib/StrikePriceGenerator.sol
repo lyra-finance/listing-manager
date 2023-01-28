@@ -108,7 +108,7 @@ library StrikePriceGenerator {
    */
   function getLeftNearestPivot(uint[] storage pivots, uint spot) public view returns (uint nearestPivot) {
     uint maxPivot = pivots[pivots.length - 1];
-    if (spot >=  maxPivot) {
+    if (spot >= maxPivot) {
       revert SpotPriceAboveMaxStrike(maxPivot);
     }
 
@@ -158,19 +158,19 @@ library StrikePriceGenerator {
    * @param tAnnualized Years to expiry, 18 decimals.
    * @return step The strike step size at this pivot and tAnnualized.
    */
-  function getStep(uint p, uint tAnnualized) public pure returns (uint step) {    
+  function getStep(uint p, uint tAnnualized) public pure returns (uint step) {
     unchecked {
       uint div;
       if (tAnnualized * (365 days) <= (1 weeks * 1e18)) {
         div = 40; // 2.5%
       } else if (tAnnualized * (365 days) <= (4 weeks * 1e18)) {
-        div = 20; // 5% 
+        div = 20; // 5%
       } else if (tAnnualized * (365 days) <= (12 weeks * 1e18)) {
-        div = 10; // 10% 
+        div = 10; // 10%
       } else {
         div = 5; // 20%
       }
-      
+
       if (p <= div) {
         revert PivotLessThanOrEqualToStepDiv(p, div);
       }
@@ -200,9 +200,7 @@ library StrikePriceGenerator {
 
       // check if we've found the answer!
       if (onRightHalf && onLeftHalf) {
-        return (target == rightPivot) 
-          ? rightPivot
-          : leftPivot;
+        return (target == rightPivot) ? rightPivot : leftPivot;
       }
 
       // otherwise start next search iteration
