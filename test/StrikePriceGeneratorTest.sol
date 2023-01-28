@@ -67,6 +67,36 @@ contract StrikePriceGeneratorTest is Test {
   // Get New Strikes //
   /////////////////////
 
+  function testAddsNewStrikesAndATM() public {
+    // 2 week expiry setup
+    uint tTarget = uint(3 days) * 1e18 / uint(365 days);
+    uint moneyness = 120e16;
+    uint maxStrikes = 10;
+
+    // 20 existing strikes
+    uint[] memory liveStrikes = new uint[](5);
+    liveStrikes[0] = 1000e18;
+    liveStrikes[1] = 1025e18;
+    liveStrikes[2] = 1050e18;
+    liveStrikes[3] = 1075e18;
+    liveStrikes[4] = 1100e18;
+    uint spot = 1500e18;
+
+    uint[] memory newStrikes = tester.getNewStrikes(
+      tTarget, 
+      spot, 
+      moneyness, 
+      maxStrikes, 
+      liveStrikes
+    );
+
+    assertEq(newStrikes[0], 1500e18);
+    assertEq(newStrikes[1], 1475e18);
+    assertEq(newStrikes[2], 1525e18);
+    assertEq(newStrikes[3], 1450e18);
+    assertEq(newStrikes[4], 1550e18);
+  }
+
 
   //////////////////////
   // Get Left Nearest //

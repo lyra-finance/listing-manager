@@ -63,6 +63,7 @@ library StrikePriceGenerator {
     newStrikes = new uint[](uint(remainNumStrikes));
     if (addAtm == 1) {
       newStrikes[0] = atmStrike;
+      remainNumStrikes--;
     }
 
     // find strike range
@@ -72,8 +73,8 @@ library StrikePriceGenerator {
     bool isLeft = true;
     uint nextStrike;
     uint stepFromAtm;
-    for (uint i = addAtm; i < uint(remainNumStrikes); i++) {
-      stepFromAtm = i * step;
+    for (uint i = 0; i < uint(remainNumStrikes); i++) {
+      stepFromAtm = (1 + (i / 2)) * step;
       if (isLeft) {
         // prioritize left strike
         nextStrike = (atmStrike > stepFromAtm) ? atmStrike - stepFromAtm : 0;
@@ -82,12 +83,7 @@ library StrikePriceGenerator {
       }
 
       if (!_existsIn(liveStrikes, nextStrike) && (nextStrike > minStrike) && (nextStrike < maxStrike)) {
-        newStrikes[i] = nextStrike;
-        remainNumStrikes--;
-      }
-
-      if (remainNumStrikes == 0) {
-        break;
+        newStrikes[i + addAtm] = nextStrike;
       }
 
       isLeft = !isLeft;
