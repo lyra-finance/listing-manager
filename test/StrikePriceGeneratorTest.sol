@@ -67,8 +67,26 @@ contract StrikePriceGeneratorTest is Test {
   // Get New Strikes //
   /////////////////////
 
+  function testAddsZeroStrikes() public {
+    // 20 existing strikes
+    uint[] memory liveStrikes = new uint[](3);
+    liveStrikes[0] = 1000e18;
+    liveStrikes[1] = 1025e18;
+    liveStrikes[2] = 1050e18;
+
+    uint[] memory newStrikes = tester.getNewStrikes(
+      uint(2 weeks) * 1e18 / uint(365 days), 
+      1000e18, 
+      120e16, 
+      3, 
+      liveStrikes
+    );
+
+    assertEq(newStrikes.length, 0);
+  }
+
   function testDoesNotAddATMAndAssymetricAdd() public {
-    // 2 week expiry setup
+    // 3 day expiry setup
     uint tTarget = uint(3 days) * 1e18 / uint(365 days);
     uint moneyness = 120e16;
     uint maxStrikes = 8;
