@@ -7,6 +7,8 @@ import "newport/synthetix/DecimalMath.sol";
 import "newport/libraries/FixedPointMathLib.sol";
 import "newport/libraries/BlackScholes.sol";
 
+import "forge-std/console2.sol";
+
 /**
  * @title Automated strike price generator
  * @author Lyra
@@ -73,7 +75,9 @@ library StrikePriceGenerator {
     bool isLeft = true;
     uint nextStrike;
     uint stepFromAtm;
-    for (uint i = 0; i < uint(remainNumStrikes); i++) {
+    uint i = 0;
+    uint numAdded = addAtm;
+    while (remainNumStrikes > 0) {
       stepFromAtm = (1 + (i / 2)) * step;
       if (isLeft) {
         // prioritize left strike
@@ -83,10 +87,12 @@ library StrikePriceGenerator {
       }
 
       if (!_existsIn(liveStrikes, nextStrike) && (nextStrike > minStrike) && (nextStrike < maxStrike)) {
-        newStrikes[i + addAtm] = nextStrike;
+        newStrikes[numAdded++] = nextStrike;
+        remainNumStrikes--;
       }
 
       isLeft = !isLeft;
+      i++;
     }
   }
 
@@ -194,7 +200,9 @@ library StrikePriceGenerator {
 
       // check if we've found the answer!
       if (onRightHalf && onLeftHalf) {
-        return leftPivot;
+        return (target == rightPivot) 
+          ? rightPivot
+          : leftPivot;
       }
 
       // otherwise start next search iteration
