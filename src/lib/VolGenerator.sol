@@ -3,6 +3,8 @@ pragma solidity 0.8.16;
 
 import "openzeppelin/utils/math/SafeCast.sol";
 import "newport/synthetix/DecimalMath.sol";
+
+// todo: maybe use the new Black76 and FixedPointMathLib and get those audited
 import "newport/libraries/FixedPointMathLib.sol";
 import "newport/libraries/BlackScholes.sol";
 import "newport/libraries/Math.sol";
@@ -124,7 +126,14 @@ library VolGenerator {
 	// Helpers //
 	/////////////
 
+	/** 
+   * @notice Calculates variance given the baseIv and skew.
+   * @param baseIv The base volatility of the board.
+   * @param skew The volatility skew of the given strike.
+	 * @return variance Variance of the given strike.
+   */
 	function getVariance(uint baseIv, uint skew) public pure returns (uint variance) {
+		// todo: good candidate for a standalone Lyra-util library
 		variance = baseIv.multiplyDecimal(skew);
 		return variance.multiplyDecimal(variance);
 	} 
