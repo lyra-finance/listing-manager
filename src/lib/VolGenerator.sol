@@ -31,9 +31,9 @@ library VolGenerator {
   ///      we adopt this bound for all strike extrapolations to avoid unexpected overshooting
   int private constant MAX_STRIKE_EXTRAPOLATION_SLOPE = 2e18;
 
-	////////////////////////////////////////
-	// Skew Interpolation & Extrapolation //
-	////////////////////////////////////////
+	//////////////////
+	// Within Board //
+	//////////////////
 
   /** 
    * @notice Interpolates skew for a new strike when given adjacent strikes.
@@ -45,7 +45,7 @@ library VolGenerator {
 	 * @param baseIv The base volatility of the board
    * @return newSkew New strike's skew.
    */
-	function interpolateStrike(
+	function interpolateSkewWithinBoard(
 		uint newStrike,
 		uint leftStrike,
 		uint rightStrike,
@@ -88,7 +88,7 @@ library VolGenerator {
    * @param tAnnualized The annualized time to expiry.
 	 * @return newSkew New strike's skew.
    */
-  function extrapolateStrike(
+  function extrapolateSkewWithinBoard(
     uint newStrike,
     uint edgeStrike,
 		uint insideStrike,
@@ -122,6 +122,31 @@ library VolGenerator {
 		return BlackScholes._sqrt(newVariance.divideDecimal(tAnnualized) * DecimalMath.UNIT).divideDecimal(baseIv);
   }
 
+	///////////////////
+	// Across Boards //
+	///////////////////
+	
+	function interpolateSkewAcrossBoards(
+    uint leftSkew,
+		uint rightSkew,
+		uint leftBaseIv,
+		uint rightBaseIv,
+		uint leftT,
+		uint rightT,
+    uint tTarget,
+		uint baseIv
+) public pure returns (uint skew) {
+    uint yLeft = (rightT - tTarget).divideDecimal(rightT - leftT);
+
+		uint leftVariance = getVariance(leftBaseIv, leftSkew).multiplyDecimal(leftT);
+		uint rightVariance = getVariance(rightBaseIv, rightSkew).multiplyDecimal(rightT);
+
+		uint newVariance = yLeft.multiplyDecimal(leftVariance) +
+				(DecimalMath.UNIT - yLeft).multiplyDecimal(rightVariance);
+
+    return BlackScholes._sqrt(newVariance.divideDecimal(tTarget) * DecimalMath.UNIT).divideDecimal(baseIv);
+  }
+
 	/////////////
 	// Helpers //
 	/////////////
@@ -137,7 +162,6 @@ library VolGenerator {
 		variance = baseIv.multiplyDecimal(skew);
 		return variance.multiplyDecimal(variance);
 	} 
-
 
 	////////////
 	// Errors //
