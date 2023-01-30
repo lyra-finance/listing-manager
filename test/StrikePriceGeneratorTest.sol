@@ -70,14 +70,14 @@ contract StrikePriceGeneratorTest is Test {
     liveStrikes[2] = 1050e18;
 
     uint[] memory newStrikes =
-      tester.getNewStrikes(uint(2 weeks) * 1e18 / uint(365 days), 1000e18, 120e16, 3, liveStrikes);
+      tester.getNewStrikes(_secToAnnualized(2 weeks), 1000e18, 120e16, 3, liveStrikes);
 
     assertEq(newStrikes.length, 0);
   }
 
   function testDoesNotAddATMAndAssymetricAdd() public {
     // 3 day expiry setup
-    uint tTarget = uint(3 days) * 1e18 / uint(365 days);
+    uint tTarget = _secToAnnualized(3 days);
     uint moneyness = 120e16;
     uint maxStrikes = 8;
 
@@ -99,7 +99,7 @@ contract StrikePriceGeneratorTest is Test {
 
   function testAddsNewStrikesAndATM() public {
     // 2 week expiry setup
-    uint tTarget = uint(3 days) * 1e18 / uint(365 days);
+    uint tTarget = _secToAnnualized(3 days);
     uint moneyness = 120e16;
     uint maxStrikes = 10;
 
@@ -171,7 +171,68 @@ contract StrikePriceGeneratorTest is Test {
   // Get Strike Range //
   //////////////////////
 
-  // todo [waiting on Vlad's test cases]
+  function testStrikeRanges() public {
+    // ETH price range regular
+    (uint min, uint max) = tester.getStrikeRange(
+      _secToAnnualized(1 days), 
+      1_499.1 * 1e18, 
+      1.2e18
+    );
+
+    assertApproxEqAbs(min, 1407.83639933e18, 1e10);
+    assertApproxEqAbs(max, 1596.27980287e18, 1e10);
+
+    // BTC price range regular
+    (min, max) = tester.getStrikeRange(
+      _secToAnnualized(7 days), 
+      18123.69 * 1e18, 
+      0.7e18
+    );
+
+    assertApproxEqAbs(min, 16449.259404685611e18, 1e10);
+    assertApproxEqAbs(max, 19968.567042145074e18, 1e10);
+
+    // Shitcoins price range regular
+    (min, max) = tester.getStrikeRange(
+      _secToAnnualized(91 days), 
+      1.23 * 1e18, 
+      2.2e18
+    );
+
+    assertApproxEqAbs(min, 0.41004927327064006e18, 1e10);
+    assertApproxEqAbs(max, 3.6895565938522177e18, 1e10);
+
+    // Small DTE -> checks if converges to spot
+    (min, max) = tester.getStrikeRange(
+      _secToAnnualized(86 seconds), 
+      723.01 * 1e18, 
+      1.21e18
+    );
+
+    assertApproxEqAbs(min, 721.56674931315e18, 1e10);
+    assertApproxEqAbs(max, 724.45613742260e18, 1e10);
+
+    // Huge DTE and spot (2.33 years, 100mm spot) -> checks for overflow
+    (min, max) = tester.getStrikeRange(
+      2.33 * 1e18, 
+      100_000_000 * 1e18, 
+      3.2e18
+    );
+
+    assertApproxEqAbs(min, 756223.8708292978e18, 1e10); 
+    assertApproxEqAbs(max, 13223597383.977974e18, 1e14); // to the nearest 100th of a cent
+
+    // 1 Sec DTE, ultra small spot -> checks for underflow / rounding errors
+    (min, max) = tester.getStrikeRange(
+      1, 
+      0.0000001 * 1e18, 
+      0.1e18
+    );
+
+    assertApproxEqAbs(min, 99998219291, 1e7); // 5th digit accuracy
+    assertApproxEqAbs(max, 100001780740, 1e7); 
+    
+  }
 
   //////////////
   // Get Step //
@@ -180,34 +241,32 @@ contract StrikePriceGeneratorTest is Test {
   function testBlocksTinyPivots() public {
     vm.expectRevert(abi.encodeWithSelector(StrikePriceGenerator.PivotLessThanOrEqualToStepDiv.selector, 40, 40));
 
-    tester.getStep(40, uint(1 days) * 1e18 / uint(365 days));
+    tester.getStep(40, _secToAnnualized(1 days));
   }
 
   function testGetsCorrectTimeHorizon() public {
-    assertEq(tester.getStep(1000e18, uint(3 days) * 1e18 / uint(365 days)), 25e18);
+    assertEq(tester.getStep(1000e18, _secToAnnualized(3 days)), 25e18);
 
-    assertEq(tester.getStep(1000e18, uint(3 weeks) * 1e18 / uint(365 days)), 50e18);
+    assertEq(tester.getStep(1000e18, _secToAnnualized(3 weeks)), 50e18);
 
-    assertEq(tester.getStep(1000e18, uint(6 weeks) * 1e18 / uint(365 days)), 100e18);
+    assertEq(tester.getStep(1000e18, _secToAnnualized(6 weeks)), 100e18);
 
-    assertEq(tester.getStep(1000e18, uint(104 weeks) * 1e18 / uint(365 days)), 200e18);
+    assertEq(tester.getStep(1000e18, _secToAnnualized(104 weeks)), 200e18);
   }
 
   function testGetsCorrectAbsStep() public {
-    assertEq(tester.getStep(5000e18, uint(6 weeks) * 1e18 / uint(365 days)), 500e18);
+    assertEq(tester.getStep(5000e18, _secToAnnualized(6 weeks)), 500e18);
 
-    assertEq(tester.getStep(13_456_000e18, uint(5 days) * 1e18 / uint(365 days)), 336_400e18);
+    assertEq(tester.getStep(13_456_000e18, _secToAnnualized(5 days)), 336_400e18);
 
-    assertEq(tester.getStep(1e18, uint(100 weeks) * 1e18 / uint(365 days)), 2e17);
+    assertEq(tester.getStep(1e18, _secToAnnualized(100 weeks)), 2e17);
   }
 
   /////////////
   // Helpers //
   /////////////
 
-  // function _convertTo18(uint[] memory inputs) internal pure {
-  //   for (uint i; i < inputs.length; i++) {
-  //     inputs[i] = inputs[i] * DecimalMath.UNIT;
-  //   }
-  // }
+  function _secToAnnualized(uint sec) internal pure returns (uint) {
+    return (sec * 1e18) / uint(365 days);
+  }
 }
