@@ -57,11 +57,8 @@ library VolGenerator {
 		}
 
 		// get left and right variances
-		uint varianceLeft = baseIv.multiplyDecimal(leftSkew);
-		varianceLeft = varianceLeft.multiplyDecimal(varianceLeft);
-
-		uint varianceRight = baseIv.multiplyDecimal(rightSkew);
-		varianceRight = varianceRight.multiplyDecimal(varianceRight);
+		uint varianceLeft = getVariance(baseIv, leftSkew);
+		uint varianceRight = getVariance(baseIv, rightSkew);
 
 		// convert strikes into ln space
 		int lnMStrike = int(newStrike).ln();
@@ -110,10 +107,8 @@ library VolGenerator {
 		int lnInsideStrike = int(insideStrike).ln();
 
 		// get variances
-		uint edgeVariance = baseIv.multiplyDecimal(edgeSkew);
-		edgeVariance = edgeVariance.multiplyDecimal(edgeVariance).multiplyDecimal(tAnnualized);
-		uint insideVariance = baseIv.multiplyDecimal(insideSkew);	
-		insideVariance = insideVariance.multiplyDecimal(insideVariance).multiplyDecimal(tAnnualized);
+		uint edgeVariance = getVariance(baseIv, edgeSkew).multiplyDecimal(tAnnualized);
+		uint insideVariance = getVariance(baseIv, insideSkew).multiplyDecimal(tAnnualized);
 
 		// get capped slope
 		int slope = (int(edgeVariance)-int(insideVariance)).divideDecimal(int(Math.abs(lnEdgeStrike-lnInsideStrike)));
@@ -124,6 +119,16 @@ library VolGenerator {
 		uint newVariance = edgeVariance + Math.abs(lnNewStrike-lnEdgeStrike).multiplyDecimal(uint(slope));
 		return BlackScholes._sqrt(newVariance.divideDecimal(tAnnualized) * DecimalMath.UNIT).divideDecimal(baseIv);
   }
+
+	/////////////
+	// Helpers //
+	/////////////
+
+	function getVariance(uint baseIv, uint skew) public pure returns (uint variance) {
+		variance = baseIv.multiplyDecimal(skew);
+		return variance.multiplyDecimal(variance);
+	} 
+
 
 	////////////
 	// Errors //

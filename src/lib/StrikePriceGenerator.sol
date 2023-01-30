@@ -183,7 +183,7 @@ library StrikePriceGenerator {
   ///////////////////
 
   /// copied from GWAV.sol
-  // todo: should reuse V2 ArrayLiv and add these in there.
+  // todo: should reuse V2 ArrayLib and add these in there.
   function _binarySearch(uint[] storage sortedArray, uint target) internal view returns (uint leftNearest) {
     uint leftPivot;
     uint rightPivot;
