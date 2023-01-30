@@ -69,8 +69,7 @@ contract StrikePriceGeneratorTest is Test {
     liveStrikes[1] = 1025e18;
     liveStrikes[2] = 1050e18;
 
-    uint[] memory newStrikes =
-      tester.getNewStrikes(_secToAnnualized(2 weeks), 1000e18, 120e16, 3, liveStrikes);
+    uint[] memory newStrikes = tester.getNewStrikes(_secToAnnualized(2 weeks), 1000e18, 120e16, 3, liveStrikes);
 
     assertEq(newStrikes.length, 0);
   }
@@ -173,65 +172,40 @@ contract StrikePriceGeneratorTest is Test {
 
   function testStrikeRanges() public {
     // ETH price range regular
-    (uint min, uint max) = tester.getStrikeRange(
-      _secToAnnualized(1 days), 
-      1_499.1 * 1e18, 
-      1.2e18
-    );
+    (uint min, uint max) = tester.getStrikeRange(_secToAnnualized(1 days), 1_499.1 * 1e18, 1.2e18);
 
     assertApproxEqAbs(min, 1407.83639933e18, 1e10);
     assertApproxEqAbs(max, 1596.27980287e18, 1e10);
 
     // BTC price range regular
-    (min, max) = tester.getStrikeRange(
-      _secToAnnualized(7 days), 
-      18123.69 * 1e18, 
-      0.7e18
-    );
+    (min, max) = tester.getStrikeRange(_secToAnnualized(7 days), 18123.69 * 1e18, 0.7e18);
 
     assertApproxEqAbs(min, 16449.259404685611e18, 1e10);
     assertApproxEqAbs(max, 19968.567042145074e18, 1e10);
 
     // Shitcoins price range regular
-    (min, max) = tester.getStrikeRange(
-      _secToAnnualized(91 days), 
-      1.23 * 1e18, 
-      2.2e18
-    );
+    (min, max) = tester.getStrikeRange(_secToAnnualized(91 days), 1.23 * 1e18, 2.2e18);
 
     assertApproxEqAbs(min, 0.41004927327064006e18, 1e10);
     assertApproxEqAbs(max, 3.6895565938522177e18, 1e10);
 
     // Small DTE -> checks if converges to spot
-    (min, max) = tester.getStrikeRange(
-      _secToAnnualized(86 seconds), 
-      723.01 * 1e18, 
-      1.21e18
-    );
+    (min, max) = tester.getStrikeRange(_secToAnnualized(86 seconds), 723.01 * 1e18, 1.21e18);
 
     assertApproxEqAbs(min, 721.56674931315e18, 1e10);
-    assertApproxEqAbs(max, 724.45613742260e18, 1e10);
+    assertApproxEqAbs(max, 724.4561374226e18, 1e10);
 
     // Huge DTE and spot (2.33 years, 100mm spot) -> checks for overflow
-    (min, max) = tester.getStrikeRange(
-      2.33 * 1e18, 
-      100_000_000 * 1e18, 
-      3.2e18
-    );
+    (min, max) = tester.getStrikeRange(2.33 * 1e18, 100_000_000 * 1e18, 3.2e18);
 
-    assertApproxEqAbs(min, 756223.8708292978e18, 1e10); 
+    assertApproxEqAbs(min, 756223.8708292978e18, 1e10);
     assertApproxEqAbs(max, 13223597383.977974e18, 1e14); // to the nearest 100th of a cent
 
     // 1 Sec DTE, ultra small spot -> checks for underflow / rounding errors
-    (min, max) = tester.getStrikeRange(
-      1, 
-      0.0000001 * 1e18, 
-      0.1e18
-    );
+    (min, max) = tester.getStrikeRange(1, 0.0000001 * 1e18, 0.1e18);
 
     assertApproxEqAbs(min, 99998219291, 1e7); // 5th digit accuracy
-    assertApproxEqAbs(max, 100001780740, 1e7); 
-    
+    assertApproxEqAbs(max, 100001780740, 1e7);
   }
 
   //////////////
