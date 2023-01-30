@@ -5,6 +5,7 @@ import "openzeppelin/utils/math/SafeCast.sol";
 import "newport/synthetix/DecimalMath.sol";
 import "newport/libraries/FixedPointMathLib.sol";
 import "newport/libraries/BlackScholes.sol";
+import "newport/libraries/Math.sol";
 
 /**
  * @title Automated vol generator
@@ -19,75 +20,40 @@ library VolGenerator {
   using FixedPointMathLib for int;
   using SafeCast for int;
 
-  // /** 
-  //  * @notice Generates baseIv and an array of skews for a new expiry.
-  //  * @param expiryArray The "live" volatility surface in the form of ExpiryData[].
-  //  * @param tTarget The annualized time-to-expiry of the new surface user wants to generate.
-  //  * @param strikeTargets The strikes for the new surface user wants to generate (in $ form, 18 decimals).
-  //  * @param spot Current chainlink spot price.
-  //  * @param forceATMSkew Value for ATM skew to anchor towards, e.g. 1e18 will ensure ATM skew is set to 1.0.
-  //  * @return baseIv BaseIV for the new board.
-  //  * @return skews Array of skews for each strike in strikeTargets.
-  //  */
-  // function getVolsForExpiry(
-  //   ExpiryData[] memory expiryArray,
-  //   uint tTarget,
-  //   uint[] memory strikeTargets,
-  //   uint spot,
-  //   uint forceATMSkew // TODO Can we assume strikeTargets always contains "ATM-ish" strike?
-  // ) public view returns (uint baseIv, uint[] memory skews) {
+	///////////////
+	// Constants //
+	///////////////
 
-  //   if (expiryArray.length == 0) revert EmptyExpiries();
-  //   if (forceATMSkew == 0) revert ZeroATMSkewNotAllowed();
+  /// @dev For strike extrapolation, slope of totalVol(log-moneyness) is known to be bounded
+  ///      by 2 from Roger-Lee formula for large enough strikes
+  ///      we adopt this bound for all strike extrapolations to avoid unexpected overshooting
+  int private constant MAX_STRIKE_EXTRAPOLATION_SLOPE = 2e18;
 
-  //   // TODO can we assume the expiries are already fully sorted? Going to depend on the process of mapping
-  //   // boards from storage to memory.
-  //   _sortExpiry(expiryArray);
-  //   uint idx;
-  //   {
-  //     uint[] memory tValues = new uint[](expiryArray.length);
-  //     for (uint i; i < expiryArray.length; i++) {
-  //       tValues[i] = expiryArray[i].tAnnualized;
-  //     }
-  //     // try to find exact match and revert if found
-  //     idx = _indexOf(tValues, tTarget);
-  //     if (idx != tValues.length) revert ExpiryAlreadyExists(tTarget);
-  //     idx = _searchSorted(tValues, tTarget);
-  //   }
-  //   if (idx == 0) {
-  //     return _extrapolateExpiry(expiryArray, 0, tTarget, strikeTargets, spot, forceATMSkew);
-  //   }
-  //   if (idx == expiryArray.length) {
-  //     return _extrapolateExpiry(expiryArray, idx-1, tTarget, strikeTargets, spot, forceATMSkew);
-  //   }
-  //   return _interpolateExpiry(expiryArray, idx, tTarget, strikeTargets, spot, forceATMSkew);
-  // }
-
-	///////////////////////////////////
-	// Interpolation & Extrapolation //
-	///////////////////////////////////
+	////////////////////////////////////////
+	// Skew Interpolation & Extrapolation //
+	////////////////////////////////////////
 
   /** 
    * @notice Interpolates skew for a new strike when given adjacent strikes.
-   * @param midStrike The strike for which skew will be interpolated.
+   * @param newStrike The strike for which skew will be interpolated.
    * @param leftStrike Must be less than midStrike.
    * @param rightStrike Must be greater than midStrike.
 	 * @param leftSkew The skew of leftStrike.
    * @param rightSkew The skew of rightStrike
-   * @param baseIv The board's baseIv.
-   * @return midSkew New strike's skew.
+	 * @param baseIv The base volatility of the board
+   * @return newSkew New strike's skew.
    */
-	function _interpolateStrike(
-		uint midStrike,
+	function interpolateStrike(
+		uint newStrike,
 		uint leftStrike,
 		uint rightStrike,
 		uint leftSkew,
 		uint rightSkew,
 		uint baseIv
-  ) internal pure returns (uint midSkew) {
+  ) public pure returns (uint newSkew) {
 		// ensure mid strike is actually in the middle
-		if (midStrike < leftStrike || midStrike > rightStrike) {
-			revert VG_StrikeNotInTheMiddle(leftStrike, midStrike, rightStrike);
+		if (!(leftStrike < newStrike && newStrike < rightStrike)) {
+			revert VG_ImproperStrikeOrderDuringInterpolation(leftStrike, newStrike, rightStrike);
 		}
 
 		// get left and right variances
@@ -98,7 +64,7 @@ library VolGenerator {
 		varianceRight = varianceRight.multiplyDecimal(varianceRight);
 
 		// convert strikes into ln space
-		int lnMStrike = int(midStrike).ln();
+		int lnMStrike = int(newStrike).ln();
 		int lnLStrike = int(leftStrike).ln();
 		int lnRStrike = int(rightStrike).ln();
 
@@ -112,51 +78,58 @@ library VolGenerator {
 		return BlackScholes._sqrt(avgVariance * DecimalMath.UNIT).divideDecimal(baseIv);
   }
 
-	// /** 
-  //  * @notice Extrapolates a skew for a new strike from a "live" vol slice.
-  //  * @param expiryData The "live" volatility slice in the form of ExpiryData.
-  //  * @param idx The index of the edge of expiryData.strikes[], either 0 or expiryData.strikes.length - 1
-  //  * @param newStrike The new strike for which skew is reqeusted (in $ form, 18 decimals).
-  //  * @return newSkew New strike's skew.
-  //  */
-  // function _extrapolateStrike(
-  //   ExpiryData memory expiryData,
-  //   uint idx,
-  //   uint newStrike
-  // ) internal view returns (uint newSkew) {
-  //     int slope;
-  //     // total variance and log-strike of the "edge" (leftmost or rightmost) 
-  //     uint w2 = expiryData.baseIv.multiplyDecimal(expiryData.strikes[idx].skew);
-  //     w2 = w2.multiplyDecimal(w2).multiplyDecimal(expiryData.tAnnualized);
-  //     int k2 = int(expiryData.strikes[idx].strikePrice).ln();
-  //     {
-  //       // block this out to resolve "stack too deep", we don't need w1 and k1 after slope is known
-  //       // TODO do we need to handle k2 == k1? Should never happen but what if
-  //       // total variance and log-strike of the second last element with respect to the edge
-  //       // TODO also maybe rename the 1,2,3 convention lol
-  //       uint idx1 = (idx == 0) ? 1 : idx - 1;
-  //       uint w1 = expiryData.baseIv.multiplyDecimal(expiryData.strikes[idx1].skew);
-  //       w1 = w1.multiplyDecimal(w1).multiplyDecimal(expiryData.tAnnualized);
-  //       int k1 = int(expiryData.strikes[idx1].strikePrice).ln();
-  //       slope = (int(w2)-int(w1)).divideDecimal(int(Math.abs(k2-k1)));
-  //       // By construction, slope is expected to be positive (vol increaes in the tails), hence floor at 0
-  //       // In absolute terms, slope is capped at MAX_STRIKE_EXTRAPOLATION_SLOPE
-  //       /// TODO a rug candidate -> can think if we can just flat-extrapolate strikes
-  //       /// (not gonna expect much of an error in 10-90 delta range)
-  //       /// then no need to compute slope, have 2 strikes, etc.
-  //       /// traders mostly short tails anyway, AMM doesn't want to be a buyer (?)
-  //       slope = (slope > 0) ? slope : int(0);
-  //       slope = (slope > MAX_STRIKE_EXTRAPOLATION_SLOPE) ? MAX_STRIKE_EXTRAPOLATION_SLOPE : slope;
-  //     }
-  //     int k3 = int(newStrike).ln();
-  //     uint w3 = w2 + Math.abs(k3-k2).multiplyDecimal(uint(slope));
-  //     return sqrt(w3.divideDecimal(expiryData.tAnnualized)).divideDecimal(expiryData.baseIv);
-  // }
+	/** 
+   * @notice Extrapolates a skew for a new strike from a "live" vol slice.
+   * @param newStrike The strike for which skew is found.
+   * @param edgeStrike The outermost strike that is nearest to the newStrike.
+   * @param insideStrike The strike adjacent to the edgeStrike, so that abs(newStrike) > abs(edgeStrike) > abs(insideStrike)
+   * @param edgeSkew The skew of the edgeStrike.
+   * @param insideSkew The skew of the insideStrike
+	 * @param baseIv The base volatility of the board
+   * @param tAnnualized The annualized time to expiry.
+	 * @return newSkew New strike's skew.
+   */
+  function extrapolateStrike(
+    uint newStrike,
+    uint edgeStrike,
+		uint insideStrike,
+		uint edgeSkew,
+		uint insideSkew,
+		uint baseIv,
+		uint tAnnualized
+  ) public pure returns (uint newSkew) {
+		// ensure strikes are properly ordered
+		if (!(newStrike < edgeStrike && edgeStrike < insideStrike) &&
+			!(insideStrike < edgeStrike && edgeStrike < newStrike)) {
+			revert VG_ImproperStrikeOrderDuringExtrapolation(insideStrike, edgeStrike, newStrike);
+		}
+
+		// convert strikes into ln space
+		int lnNewStrike = int(newStrike).ln();
+		int lnEdgeStrike = int(edgeStrike).ln();
+		int lnInsideStrike = int(insideStrike).ln();
+
+		// get variances
+		uint edgeVariance = baseIv.multiplyDecimal(edgeSkew);
+		edgeVariance = edgeVariance.multiplyDecimal(edgeVariance).multiplyDecimal(tAnnualized);
+		uint insideVariance = baseIv.multiplyDecimal(insideSkew);	
+		insideVariance = insideVariance.multiplyDecimal(insideVariance).multiplyDecimal(tAnnualized);
+
+		// get capped slope
+		int slope = (int(edgeVariance)-int(insideVariance)).divideDecimal(int(Math.abs(lnEdgeStrike-lnInsideStrike)));
+		slope = (slope > 0) ? slope : int(0);
+		slope = (slope > MAX_STRIKE_EXTRAPOLATION_SLOPE) ? MAX_STRIKE_EXTRAPOLATION_SLOPE : slope;
+
+		// extrapolate new skew
+		uint newVariance = edgeVariance + Math.abs(lnNewStrike-lnEdgeStrike).multiplyDecimal(uint(slope));
+		return BlackScholes._sqrt(newVariance.divideDecimal(tAnnualized) * DecimalMath.UNIT).divideDecimal(baseIv);
+  }
 
 	////////////
 	// Errors //
 	////////////
 
-	error VG_StrikeNotInTheMiddle(uint leftStrike, uint midStrike, uint rightStrike);
+	error VG_ImproperStrikeOrderDuringInterpolation(uint leftStrike, uint midStrike, uint rightStrike);
+	error VG_ImproperStrikeOrderDuringExtrapolation(uint insideStrike, uint edgeStrike, uint newStrike);
 
 }
