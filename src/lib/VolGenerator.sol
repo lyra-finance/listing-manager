@@ -1,6 +1,7 @@
 //SPDX-License-Identifier: ISC
 pragma solidity 0.8.16;
 
+import "openzeppelin/utils/math/SafeCast.sol";
 import "newport/synthetix/DecimalMath.sol";
 import "newport/libraries/FixedPointMathLib.sol";
 import "newport/libraries/BlackScholes.sol";
@@ -16,6 +17,7 @@ library VolGenerator {
 	using DecimalMath for uint;
   using SignedDecimalMath for int;
   using FixedPointMathLib for int;
+  using SafeCast for int;
 
   // /** 
   //  * @notice Generates baseIv and an array of skews for a new expiry.
@@ -82,14 +84,14 @@ library VolGenerator {
 		uint leftSkew,
 		uint rightSkew,
 		uint baseIv
-  ) internal view returns (uint midSkew) {
+  ) internal pure returns (uint midSkew) {
 		// ensure mid strike is actually in the middle
 		if (midStrike < leftStrike || midStrike > rightStrike) {
-			VG_StrikeNotInTheMiddle(leftStrike, midStrike, rightStrike);
+			revert VG_StrikeNotInTheMiddle(leftStrike, midStrike, rightStrike);
 		}
 
 		// get left and right variances
-		uint varianceLeft = baseIv.multiplyDecimal(leftStrike);
+		uint varianceLeft = baseIv.multiplyDecimal(leftSkew);
 		varianceLeft = varianceLeft.multiplyDecimal(varianceLeft);
 
 		uint varianceRight = baseIv.multiplyDecimal(rightSkew);
@@ -101,9 +103,11 @@ library VolGenerator {
 		int lnRStrike = int(rightStrike).ln();
 
 		// linear interpolation of variance
-		uint ratio = (lnRStrike - lnMStrike).divideDecimal(lnRStrike - lnLStrike);
+		uint ratio = SafeCast.toUint256(
+			(lnRStrike - lnMStrike).divideDecimal(lnRStrike - lnLStrike)
+		);
 		uint avgVariance = ratio.multiplyDecimal(varianceLeft)
-			+ (SignedDecimalMath.UNIT - ratio).multiplyDecimal(varianceRight);
+			+ (DecimalMath.UNIT - ratio).multiplyDecimal(varianceRight);
 		
 		return BlackScholes._sqrt(avgVariance * DecimalMath.UNIT).divideDecimal(baseIv);
   }
