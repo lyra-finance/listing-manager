@@ -8,6 +8,7 @@ import "newport/synthetix/DecimalMath.sol";
 import "newport/libraries/FixedPointMathLib.sol";
 import "newport/libraries/BlackScholes.sol";
 import "newport/libraries/Math.sol";
+import "lyra-utils/arrays/UnorderedMemoryArray.sol";
 
 /**
  * @title Automated vol generator
@@ -21,6 +22,7 @@ library VolGenerator {
   using SignedDecimalMath for int;
   using FixedPointMathLib for int;
   using SafeCast for int;
+	using UnorderedMemoryArray for uint[];
 
 	///////////////
 	// Constants //
@@ -52,16 +54,16 @@ library VolGenerator {
 		}
 
     // early return if found match
-		int index = _indexOf(orderedLiveStrikePrices, newStrike);
-		if (index > 0) {
+		// todo: can use binary search here but need to add memory binary search to lyra-utils
+		int index = orderedLiveStrikePrices.findInArray(newStrike, orderedLiveStrikePrices.length);
+		if (index >= 0) {
 			return orderedLiveSkews[uint(index)];
 		}
 
     // if failed, interpolate / extrapolate
     // ASSUME expiryData is already sorted!!!
 
-		// todo: can use binary search here and have it spit out the index too
-		// todo: start an external lyra-utils library
+		// todo: should combine with above and just use binary search.
     idx = _searchSorted(strikeValues, strikeTarget);
     if (idx == 0) {
       return _extrapolateStrike(expiryData, 0, strikeTarget);
