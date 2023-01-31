@@ -2,10 +2,10 @@
 pragma solidity 0.8.16;
 
 // Libraries
+import "openzeppelin/utils/Arrays.sol";
 import "newport/synthetix/SignedDecimalMath.sol";
 import "newport/synthetix/DecimalMath.sol";
 import "newport/libraries/FixedPointMathLib.sol";
-import "newport/libraries/BlackScholes.sol";
 
 import "forge-std/console2.sol";
 
@@ -116,8 +116,15 @@ library StrikePriceGenerator {
       revert SpotPriceIsZero();
     }
 
-    // finds the nearest pivot
-    return _binarySearch(pivots, spot);
+    // use OZ upperBound library to get leftNearest
+    uint rightIndex = Arrays.findUpperBound(pivots, spot);
+    if (rightIndex == 0) {
+      return pivots[0];
+    } else if (pivots[rightIndex] == spot) {
+      return pivots[rightIndex];
+    } else {
+      return pivots[rightIndex - 1];
+    }
   }
 
   /**
@@ -146,7 +153,7 @@ library StrikePriceGenerator {
     pure
     returns (uint minStrike, uint maxStrike)
   {
-    uint strikeRange = int(maxScaledMoneyness.multiplyDecimal(BlackScholes._sqrt(tTarget * DecimalMath.UNIT))).exp();
+    uint strikeRange = int(maxScaledMoneyness.multiplyDecimal(Math.sqrt(tTarget * DecimalMath.UNIT))).exp();
     return (spot.divideDecimal(strikeRange), spot.multiplyDecimal(strikeRange));
   }
 
@@ -178,39 +185,6 @@ library StrikePriceGenerator {
     }
   }
 
-  ///////////////////
-  // Array Helpers //
-  ///////////////////
-
-  /// copied from GWAV.sol
-  // todo: should reuse V2 ArrayLib and add these in there.
-  function _binarySearch(uint[] storage sortedArray, uint target) internal view returns (uint leftNearest) {
-    uint leftPivot;
-    uint rightPivot;
-    uint leftBound = 0;
-    uint rightBound = sortedArray.length;
-    uint i;
-    while (true) {
-      i = (leftBound + rightBound) / 2;
-      leftPivot = sortedArray[i];
-      rightPivot = sortedArray[i + 1];
-
-      bool onRightHalf = leftPivot <= target;
-      bool onLeftHalf = target <= rightPivot;
-
-      // check if we've found the answer!
-      if (onRightHalf && onLeftHalf) {
-        return (target == rightPivot) ? rightPivot : leftPivot;
-      }
-
-      // otherwise start next search iteration
-      if (!onRightHalf) {
-        rightBound = i - 1;
-      } else {
-        leftBound = i + 1;
-      }
-    }
-  }
 
   /**
    * @notice Searches for an exact match of target in values[], and returns true if exists.
