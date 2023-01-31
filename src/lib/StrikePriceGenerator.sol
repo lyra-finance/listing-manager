@@ -6,7 +6,7 @@ import "openzeppelin/utils/Arrays.sol";
 import "newport/synthetix/SignedDecimalMath.sol";
 import "newport/synthetix/DecimalMath.sol";
 import "newport/libraries/FixedPointMathLib.sol";
-
+import "lyra-utils/arrays/UnorderedMemoryArray.sol";
 import "forge-std/console2.sol";
 
 /**
@@ -20,6 +20,7 @@ library StrikePriceGenerator {
   using DecimalMath for uint;
   using SignedDecimalMath for int;
   using FixedPointMathLib for int;
+  using UnorderedMemoryArray for uint[];
 
   /**
    * @notice Generates an array of new strikes around spot following the schema of this library.
@@ -52,8 +53,7 @@ library StrikePriceGenerator {
 
     // find the ATM strike and see if it already exists
     (uint atmStrike) = getATMStrike(spot, nearestPivot, step);
-    uint addAtm = !_existsIn(liveStrikes, atmStrike) ? 1 : 0;
-
+    
     // find remaining strike (excluding atm)
     int remainNumStrikes = int(maxNumStrikes) - int(liveStrikes.length);
     if (remainNumStrikes <= 0) {
@@ -61,39 +61,11 @@ library StrikePriceGenerator {
       return newStrikes;
     }
 
-    // add atm strike first
-    newStrikes = new uint[](uint(remainNumStrikes));
-    if (addAtm == 1) {
-      newStrikes[0] = atmStrike;
-      remainNumStrikes--;
-    }
-
     // find strike range
     (uint minStrike, uint maxStrike) = getStrikeRange(tTarget, spot, maxScaledMoneyness);
 
     // starting from ATM strike, go left and right in steps
-    bool isLeft = true;
-    uint nextStrike;
-    uint stepFromAtm;
-    uint i = 0;
-    uint numAdded = addAtm;
-    while (remainNumStrikes > 0) {
-      stepFromAtm = (1 + (i / 2)) * step;
-      if (isLeft) {
-        // prioritize left strike
-        nextStrike = (atmStrike > stepFromAtm) ? atmStrike - stepFromAtm : 0;
-      } else {
-        nextStrike = atmStrike + stepFromAtm;
-      }
-
-      if (!_existsIn(liveStrikes, nextStrike) && (nextStrike > minStrike) && (nextStrike < maxStrike)) {
-        newStrikes[numAdded++] = nextStrike;
-        remainNumStrikes--;
-      }
-
-      isLeft = !isLeft;
-      i++;
-    }
+    return _createNewStrikes(liveStrikes, remainNumStrikes, atmStrike, step, minStrike, maxStrike);
   }
 
   /////////////
@@ -185,20 +157,47 @@ library StrikePriceGenerator {
     }
   }
 
-
-  /**
-   * @notice Searches for an exact match of target in values[], and returns true if exists.
-   * @param values An array of uint values.
-   * @param target Target value to search.
-   * @return exists Bool, true if exists.
-   */
-  function _existsIn(uint[] memory values, uint target) internal pure returns (bool exists) {
-    for (uint i = 0; i < values.length; i++) {
-      if (target == values[i]) return true;
+  function _createNewStrikes(
+    uint[] memory liveStrikes, 
+    int remainNumStrikes, 
+    uint atmStrike, 
+    uint step, 
+    uint minStrike,
+    uint maxStrike
+  ) internal pure returns (uint[] memory newStrikes){
+    // add ATM strike first
+    uint numAdded = (liveStrikes.findInArray(atmStrike, liveStrikes.length) == -1) ? 1 : 0;
+    newStrikes = new uint[](uint(remainNumStrikes));
+    if (numAdded == 1) {
+      newStrikes[0] = atmStrike;
+      remainNumStrikes--;
     }
 
-    return false;
+    bool doesNotExist;
+    bool isLeft = true;
+    uint nextStrike;
+    uint stepFromAtm;
+    uint i = 0;
+    while (remainNumStrikes > 0) {
+      stepFromAtm = (1 + (i / 2)) * step;
+      if (isLeft) {
+        // prioritize left strike
+        nextStrike = (atmStrike > stepFromAtm) ? atmStrike - stepFromAtm : 0;
+      } else {
+        nextStrike = atmStrike + stepFromAtm;
+      }
+
+      doesNotExist = liveStrikes.findInArray(nextStrike, liveStrikes.length) == -1;
+      if (doesNotExist && (nextStrike > minStrike) && (nextStrike < maxStrike)) {
+        newStrikes[numAdded++] = nextStrike;
+        remainNumStrikes--;
+      }
+
+      isLeft = !isLeft;
+      i++;
+    }
   }
+
 
   ////////////
   // Errors //
