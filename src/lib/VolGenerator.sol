@@ -35,6 +35,42 @@ library VolGenerator {
 	// Within Board //
 	//////////////////
 
+	function interpolateOrExtrapolateWithinBoard(
+		uint newStrike,
+		uint[] orderedLiveStrikePrices,
+		uint[] orderedLiveSkews,
+		uint baseIv,
+		uint tAnnualized
+	) public pure returns (uint newSkew) {
+		if (expiryData.strikes.length == 0) {
+			revert VG_NoStrikes();
+		}
+
+		// if only 1 strike, cannot interpolate or extrapolate
+    if (expiryData.strikes.length == 1) {
+			return orderedLiveSkews[0];
+		}
+    
+    // early return if found match
+		int index = _indexOf(orderedLiveStrikePrices, newStrike);
+		if (index > 0) {
+			return orderedLiveSkews[uint(index)];
+		}
+
+    // if failed, interpolate / extrapolate
+    // ASSUME expiryData is already sorted!!!
+
+		// todo: can use binary search here and have it spit out the index too
+    idx = _searchSorted(strikeValues, strikeTarget);
+    if (idx == 0) {
+      return _extrapolateStrike(expiryData, 0, strikeTarget);
+    }
+    if (idx == strikeValues.length) {
+      return _extrapolateStrike(expiryData, idx-1, strikeTarget);
+    }
+    return _interpolateStrike(expiryData, idx, strikeTarget);
+	}
+
   /** 
    * @notice Interpolates skew for a new strike when given adjacent strikes.
    * @param newStrike The strike for which skew will be interpolated.
@@ -127,7 +163,7 @@ library VolGenerator {
 	///////////////////
 	
 	/** 
-   * @notice Interpolates skew using exact strikes from longer and shorted dated boards.
+   * @notice Interpolates skew for a new baord using exact strikes from longer/shorted dated boards.
    * @param leftSkew Skew from same strike but shorter dated board.
    * @param rightSkew Skew from same strike but longer dated board.
    * @param leftBaseIv BaseIv of the shorter dated board.
@@ -161,6 +197,43 @@ library VolGenerator {
 		// interpolate
 		uint vol = sqrtWeightedAvg(ratio, leftVariance, rightVariance, tTarget);
 		return vol.divideDecimal(baseIv);
+  }
+
+	/** 
+   * @notice Extrapolates skew for a strike on a new board.
+	 *			   Assumes: sigma(z(T1), T1) == sigma(z(T2), T2)
+   *				 i.e. "2mo 80-delta option" has same vol as "3mo 80-delta option".
+   * @param newStrike The "live" volatility slice in the form of ExpiryData.
+   * @param edgeBoardT The index of expiryArray's edge, i.e. 0 or expiryArray.length - 1 
+   * @param tTarget The annualized time-to-expiry of the new surface user wants to generate.
+   * @param spot Current chainlink spot price.
+   * @param baseIv Value for ATM skew to anchor towards, e.g. 1e18 will ensure ATM skew is set to 1.0.
+   * @return newSkew Array of skews for each strike in strikeTargets.
+   */
+  function extrapolateSkewAcrossBoards(
+    uint newStrike,
+    uint edgeBoardT,
+    uint tTarget,
+    uint spot,
+    uint baseIv
+  ) internal view returns (uint newSkew) {
+    ExpiryData memory expiryData = expiryArray[idx];
+    // map newStrike to a strike on the edge board with the same moneyness
+		int moneyness = _strikeToMoneyness(newStrike, spot, tTarget);
+		uint strikeOnEdgeBoard = _moneynessToStrike(moneyness, spot, edgeBoardT);
+    
+		// 
+    uint[] memory expirySkews = _getSkewForStrikeArray(expiryData, strikesT1, false);
+    // return the extrapolated values as is if there is no forceATMSkew
+
+    if (forceATMSkew == 0) return (expiryData.baseIv, expirySkews); // revert if zero todo
+    // otherwise re-scale baseIv and skews to ensure ATM skew for new expiry == forceATMSkew (usually 1.0)
+    uint argMinIdx = _argMin(strikeSpotDistances);
+    uint scaler = forceATMSkew.divideDecimal(expirySkews[argMinIdx]);
+    for (uint i=0; i<expirySkews.length; i++){
+      expirySkews[i] = expirySkews[i].multiplyDecimal(scaler);
+    }
+    return (expiryData.baseIv.divideDecimal(scaler), expirySkews);
   }
 
 	/////////////
