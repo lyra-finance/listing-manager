@@ -67,14 +67,11 @@ library VolGenerator {
 		int lnLStrike = int(leftStrike).ln();
 		int lnRStrike = int(rightStrike).ln();
 
-		// linear interpolation of variance
-		uint ratio = SafeCast.toUint256(
-			(lnRStrike - lnMStrike).divideDecimal(lnRStrike - lnLStrike)
-		);
-		uint avgVariance = ratio.multiplyDecimal(varianceLeft)
-			+ (DecimalMath.UNIT - ratio).multiplyDecimal(varianceRight);
+		// interpolate
+		uint ratio = SafeCast.toUint256((lnRStrike - lnMStrike).divideDecimal(lnRStrike - lnLStrike));
 		
-		return BlackScholes._sqrt(avgVariance * DecimalMath.UNIT).divideDecimal(baseIv);
+		uint vol = sqrtWeightedAvg(ratio, varianceLeft, varianceRight, 1e18);
+		return vol.divideDecimal(baseIv);
   }
 
 	/** 
@@ -114,8 +111,11 @@ library VolGenerator {
 
 		// get capped slope
 		int slope = (int(edgeVariance)-int(insideVariance)).divideDecimal(int(Math.abs(lnEdgeStrike-lnInsideStrike)));
-		slope = (slope > 0) ? slope : int(0);
-		slope = (slope > MAX_STRIKE_EXTRAPOLATION_SLOPE) ? MAX_STRIKE_EXTRAPOLATION_SLOPE : slope;
+		if (slope < 0) {
+			slope = int(0);
+		} else if (slope > MAX_STRIKE_EXTRAPOLATION_SLOPE) {
+			slope = MAX_STRIKE_EXTRAPOLATION_SLOPE;
+		}
 
 		// extrapolate new skew
 		uint newVariance = edgeVariance + Math.abs(lnNewStrike-lnEdgeStrike).multiplyDecimal(uint(slope));
@@ -126,6 +126,18 @@ library VolGenerator {
 	// Across Boards //
 	///////////////////
 	
+	/** 
+   * @notice Interpolates skew using exact strikes from longer and shorted dated boards.
+   * @param leftSkew Skew from same strike but shorter dated board.
+   * @param rightSkew Skew from same strike but longer dated board.
+   * @param leftBaseIv BaseIv of the shorter dated board.
+   * @param rightBaseIv BaseIv of the longer dated board.
+   * @param leftT Annualized time to expiry of the shorter dated board.
+	 * @param rightT Annualized time to expiry of the longer dated board.
+   * @param tTarget Annualied time to expiry of the targer strike
+   * @param baseIv BaseIv of the board with the new strike
+	 * @return newSkew New strike's skew.
+   */
 	function interpolateSkewAcrossBoards(
     uint leftSkew,
 		uint rightSkew,
@@ -135,16 +147,20 @@ library VolGenerator {
 		uint rightT,
     uint tTarget,
 		uint baseIv
-) public pure returns (uint skew) {
-    uint yLeft = (rightT - tTarget).divideDecimal(rightT - leftT);
+) public pure returns (uint newSkew) {
+		if (!(leftT < tTarget && tTarget < rightT)) {
+			revert VG_ImproperExpiryOrderDuringInterpolation(leftT, tTarget, rightT);
+		}
 
+    uint ratio = (rightT - tTarget).divideDecimal(rightT - leftT);
+
+		// convert to variance
 		uint leftVariance = getVariance(leftBaseIv, leftSkew).multiplyDecimal(leftT);
 		uint rightVariance = getVariance(rightBaseIv, rightSkew).multiplyDecimal(rightT);
 
-		uint newVariance = yLeft.multiplyDecimal(leftVariance) +
-				(DecimalMath.UNIT - yLeft).multiplyDecimal(rightVariance);
-
-    return BlackScholes._sqrt(newVariance.divideDecimal(tTarget) * DecimalMath.UNIT).divideDecimal(baseIv);
+		// interpolate
+		uint vol = sqrtWeightedAvg(ratio, leftVariance, rightVariance, tTarget);
+		return vol.divideDecimal(baseIv);
   }
 
 	/////////////
@@ -161,7 +177,20 @@ library VolGenerator {
 		// todo: good candidate for a standalone Lyra-util library
 		variance = baseIv.multiplyDecimal(skew);
 		return variance.multiplyDecimal(variance);
-	} 
+	}
+
+	function sqrtWeightedAvg(
+		uint leftVal,
+		uint leftWeight,
+		uint rightWeight,
+		uint denominator
+	) public pure returns (uint) {
+
+		uint weightedAvg = leftVal.multiplyDecimal(leftWeight) +
+			(DecimalMath.UNIT - leftVal).multiplyDecimal(rightWeight);
+
+    return BlackScholes._sqrt(weightedAvg.divideDecimal(denominator) * DecimalMath.UNIT);
+	}
 
 	////////////
 	// Errors //
@@ -169,5 +198,5 @@ library VolGenerator {
 
 	error VG_ImproperStrikeOrderDuringInterpolation(uint leftStrike, uint midStrike, uint rightStrike);
 	error VG_ImproperStrikeOrderDuringExtrapolation(uint insideStrike, uint edgeStrike, uint newStrike);
-
+	error VG_ImproperExpiryOrderDuringInterpolation(uint leftT, uint tTarget, uint rightT);
 }
