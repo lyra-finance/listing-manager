@@ -61,6 +61,7 @@ library VolGenerator {
     // ASSUME expiryData is already sorted!!!
 
 		// todo: can use binary search here and have it spit out the index too
+		// todo: start an external lyra-utils library
     idx = _searchSorted(strikeValues, strikeTarget);
     if (idx == 0) {
       return _extrapolateStrike(expiryData, 0, strikeTarget);
@@ -219,26 +220,51 @@ library VolGenerator {
   ) internal view returns (uint newSkew) {
     ExpiryData memory expiryData = expiryArray[idx];
     // map newStrike to a strike on the edge board with the same moneyness
-		int moneyness = _strikeToMoneyness(newStrike, spot, tTarget);
-		uint strikeOnEdgeBoard = _moneynessToStrike(moneyness, spot, edgeBoardT);
+		int moneyness = strikeToMoneyness(newStrike, spot, tTarget);
+		uint strikeOnEdgeBoard = moneynessToStrike(moneyness, spot, edgeBoardT);
     
-		// 
-    uint[] memory expirySkews = _getSkewForStrikeArray(expiryData, strikesT1, false);
-    // return the extrapolated values as is if there is no forceATMSkew
-
-    if (forceATMSkew == 0) return (expiryData.baseIv, expirySkews); // revert if zero todo
-    // otherwise re-scale baseIv and skews to ensure ATM skew for new expiry == forceATMSkew (usually 1.0)
-    uint argMinIdx = _argMin(strikeSpotDistances);
-    uint scaler = forceATMSkew.divideDecimal(expirySkews[argMinIdx]);
-    for (uint i=0; i<expirySkews.length; i++){
-      expirySkews[i] = expirySkews[i].multiplyDecimal(scaler);
-    }
-    return (expiryData.baseIv.divideDecimal(scaler), expirySkews);
+    return interpolateOrExtrapolateWithinBoard();
   }
 
 	/////////////
 	// Helpers //
 	/////////////
+
+	 /**
+   * @notice Converts a $ strike to standard moneyness.
+   * @dev By "standard" moneyness we mean moneyness := ln(K/S) / sqrt(T).
+   *      This value allows us to avoid delta calculations.
+   *      Delta maps one-to-one to Black-Scholes d1, and this is a "simple" version of d1.
+   *      So instead of using / computing / inverting delta, we can just find moneyness
+   *      That maps to desired delta values, and use it instead.
+   * @param strike dollar strike, 18 decimals
+   * @param spot dollar Chainlink spot, 18 decimals
+   * @param tAnnualized annualized time-to-expiry, 18 decimals
+   */  
+  function strikeToMoneyness(
+    uint strike,
+    uint spot,
+    uint tAnnualized
+  ) public pure returns (int moneyness) { unchecked {
+    moneyness = int(strike.divideDecimal(spot)).ln().divideDecimal(
+			int(BlackScholes._sqrt(tAnnualized * DecimalMath.UNIT))
+		);
+  }}
+
+  /**
+   * @notice Converts standard moneyness back to a $ strike.
+   * 				 Inverse of `strikeToMoneyness()`.
+   * @param moneyness moneyness as defined in _strikeToMoneyness()
+   * @param spot dollar Chainlink spot, 18 decimals
+   * @param tAnnualized annualized time-to-expiry, 18 decimals
+   */  
+  function moneynessToStrike(
+    int moneyness,
+    uint spot,
+    uint tAnnualized
+  ) internal view returns (uint strike) { unchecked {
+    strike = moneyness.multiplyDecimal(int(sqrt(tAnnualized))).exp().multiplyDecimal(spot);
+  }}
 
 	/** 
    * @notice Calculates variance given the baseIv and skew.
