@@ -53,7 +53,7 @@ library StrikePriceGenerator {
 
     // find the ATM strike and see if it already exists
     (uint atmStrike) = getATMStrike(spot, nearestPivot, step);
-    
+
     // find remaining strike (excluding atm)
     int remainNumStrikes = int(maxNumStrikes) - int(liveStrikes.length);
     if (remainNumStrikes <= 0) {
@@ -157,14 +157,26 @@ library StrikePriceGenerator {
     }
   }
 
+  /**
+   * @notice Constructs a new array of strikes given all required parameters.
+   *         Begins by adding a strike to the left of the ATM, then to the right.
+   *         Alternates until remaining strikes runs out or exceeds the range.
+   * @param liveStrikes Existing strikes.
+   * @param remainNumStrikes Num of strikes that can be added.
+   * @param atmStrike Strike price of ATM.
+   * @param step Step size for each new strike.
+   * @param minStrike Min allowed strike based on moneyness (delta).
+   * @param maxStrike Max allowed strike based on moneyness (delta).
+   * @return newStrikes Additional strikes to add.
+   */
   function _createNewStrikes(
-    uint[] memory liveStrikes, 
-    int remainNumStrikes, 
-    uint atmStrike, 
-    uint step, 
+    uint[] memory liveStrikes,
+    int remainNumStrikes,
+    uint atmStrike,
+    uint step,
     uint minStrike,
     uint maxStrike
-  ) internal pure returns (uint[] memory newStrikes){
+  ) internal pure returns (uint[] memory newStrikes) {
     // add ATM strike first
     uint numAdded = (liveStrikes.findInArray(atmStrike, liveStrikes.length) == -1) ? 1 : 0;
     newStrikes = new uint[](uint(remainNumStrikes));
@@ -197,7 +209,6 @@ library StrikePriceGenerator {
       i++;
     }
   }
-
 
   ////////////
   // Errors //

@@ -50,7 +50,7 @@
 //     if (expiryData.strikes.length == 1) {
 // 			return orderedLiveSkews[0];
 // 		}
-    
+
 //     // early return if found match
 // 		int index = _indexOf(orderedLiveStrikePrices, newStrike);
 // 		if (index > 0) {
@@ -72,7 +72,7 @@
 //     return _interpolateStrike(expiryData, idx, strikeTarget);
 // 	}
 
-//   /** 
+//   /**
 //    * @notice Interpolates skew for a new strike when given adjacent strikes.
 //    * @param newStrike The strike for which skew will be interpolated.
 //    * @param leftStrike Must be less than midStrike.
@@ -106,12 +106,12 @@
 
 // 		// interpolate
 // 		uint ratio = SafeCast.toUint256((lnRStrike - lnMStrike).divideDecimal(lnRStrike - lnLStrike));
-		
+
 // 		uint vol = sqrtWeightedAvg(ratio, varianceLeft, varianceRight, 1e18);
 // 		return vol.divideDecimal(baseIv);
 //   }
 
-// 	/** 
+// 	/**
 //    * @notice Extrapolates a skew for a new strike from a "live" vol slice.
 //    * @param newStrike The strike for which skew is found.
 //    * @param edgeStrike The outermost strike that is nearest to the newStrike.
@@ -162,8 +162,8 @@
 // 	///////////////////
 // 	// Across Boards //
 // 	///////////////////
-	
-// 	/** 
+
+// 	/**
 //    * @notice Interpolates skew for a new baord using exact strikes from longer/shorted dated boards.
 //    * @param leftSkew Skew from same strike but shorter dated board.
 //    * @param rightSkew Skew from same strike but longer dated board.
@@ -200,12 +200,12 @@
 // 		return vol.divideDecimal(baseIv);
 //   }
 
-// 	/** 
+// 	/**
 //    * @notice Extrapolates skew for a strike on a new board.
 // 	 *			   Assumes: sigma(z(T1), T1) == sigma(z(T2), T2)
 //    *				 i.e. "2mo 80-delta option" has same vol as "3mo 80-delta option".
 //    * @param newStrike The "live" volatility slice in the form of ExpiryData.
-//    * @param edgeBoardT The index of expiryArray's edge, i.e. 0 or expiryArray.length - 1 
+//    * @param edgeBoardT The index of expiryArray's edge, i.e. 0 or expiryArray.length - 1
 //    * @param tTarget The annualized time-to-expiry of the new surface user wants to generate.
 //    * @param spot Current chainlink spot price.
 //    * @param baseIv Value for ATM skew to anchor towards, e.g. 1e18 will ensure ATM skew is set to 1.0.
@@ -222,7 +222,7 @@
 //     // map newStrike to a strike on the edge board with the same moneyness
 // 		int moneyness = strikeToMoneyness(newStrike, spot, tTarget);
 // 		uint strikeOnEdgeBoard = moneynessToStrike(moneyness, spot, edgeBoardT);
-    
+
 //     return interpolateOrExtrapolateWithinBoard();
 //   }
 
@@ -240,7 +240,7 @@
 //    * @param strike dollar strike, 18 decimals
 //    * @param spot dollar Chainlink spot, 18 decimals
 //    * @param tAnnualized annualized time-to-expiry, 18 decimals
-//    */  
+//    */
 //   function strikeToMoneyness(
 //     uint strike,
 //     uint spot,
@@ -257,7 +257,7 @@
 //    * @param moneyness moneyness as defined in _strikeToMoneyness()
 //    * @param spot dollar Chainlink spot, 18 decimals
 //    * @param tAnnualized annualized time-to-expiry, 18 decimals
-//    */  
+//    */
 //   function moneynessToStrike(
 //     int moneyness,
 //     uint spot,
@@ -266,7 +266,7 @@
 //     strike = moneyness.multiplyDecimal(int(sqrt(tAnnualized))).exp().multiplyDecimal(spot);
 //   }}
 
-// 	/** 
+// 	/**
 //    * @notice Calculates variance given the baseIv and skew.
 //    * @param baseIv The base volatility of the board.
 //    * @param skew The volatility skew of the given strike.
