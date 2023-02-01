@@ -24,22 +24,78 @@ library VolGenerator {
   using SafeCast for int;
 	using MemoryBinarySearch for uint[];
 
-	////////////////////
-	// Board Indexing //
-	////////////////////
+	struct Board {
+		uint tAnnualized;
+		uint baseIv;
+		uint[] orderedStrikePrices;
+		uint[] orderedSkews;
+	}
 
-	/**
-	 * @notice Returns the first index that has an expiry greater or equal to `tTarget`
-	 *			   Will return orderedTs.length if `tTarget` greater than all values in array.
-	 * @param tTarget Target board expiry to find for
-	 * @param orderedTs Ordered list of board timeToExpiries (can be annualized) in ascending order
-	 * @return upperBoundIdx Returns the closest index of the tAnnualized that is greater than or equal to `tTarget`
-	 */
-	function findBoardIndex(
+	// ////////////////////
+	// // Board Indexing //
+	// ////////////////////
+
+	// /**
+	//  * @notice Returns the first index that has an expiry greater or equal to `tTarget`
+	//  *			   Will return orderedTs.length if `tTarget` greater than all values in array.
+	//  * @param tTarget Target board expiry to find for
+	//  * @param orderedTs Ordered list of board timeToExpiries (can be annualized) in ascending order
+	//  * @return upperBoundIdx Returns the closest index of the tAnnualized that is greater than or equal to `tTarget`
+	//  */
+	// function findBoardIndex(
+	// 	uint tTarget,
+	// 	uint[] memory orderedTs
+	// ) public pure returns (uint upperBoundIdx) {
+	// 	return orderedTs.findUpperBound(tTarget);
+	// }
+
+	////////////////
+	// End to End //
+	////////////////
+
+	function getNewSkewForNewBoard( // vs getNewSkewForNewBoard
+		Board[] memory orderedBoards; // can simplify down to just left and right
+		uint newStrike,
 		uint tTarget,
-		uint[] memory orderedTs
-	) public pure returns (uint upperBoundIdx) {
-		return orderedTs.findUpperBound(tTarget);
+		uint baseIv
+	) public pure {
+		// todo: need to think from perspective of when across vs within boards is used
+		// these two are usually quite separate
+	}
+
+	function getNewSkewForExistingBoard(
+		uint newStrike,
+		uint[] orderedLiveStrikePrices,
+		uint[] orderedLiveSkews,
+		uint baseIv,
+		uint tAnnualized
+	) public pure returns (uint newSkew) {
+		uint numLiveStrikes = orderedLiveStrikePrices.length;
+		if (numLiveStrikes == 0) {
+			revert VG_NoStrikes();
+		}
+
+    // early return if found exact match
+		uint idx = orderedLiveStrikePrices.findUpperBound(newStrike);
+		if (orderedLiveStrikePrices[idx] == newStrike) {
+			return orderedLiveSkews[idx];
+		}
+
+		// determine whether to interpolate or extrapolate
+    if (idx == 0) {
+			return orderedLiveSkews[0];
+    } else if (idx == numLiveStrikes) {
+			return orderedLiveSkews[numLiveStrikes-1];
+    } else {
+			return interpolateSkewWithinBoard(
+				newStrike,
+				orderedLiveStrikePrices[idx - 1],
+				orderedLiveStrikePrices[idx],
+				orderedLiveSkews[idx - 1],
+				orderedLiveSkews[idx],
+				baseIv
+			);
+		}
 	}
 
 	///////////////////
@@ -103,12 +159,11 @@ library VolGenerator {
     uint spot,
     uint baseIv
   ) internal view returns (uint newSkew) {
-    ExpiryData memory expiryData = expiryArray[idx];
     // map newStrike to a strike on the edge board with the same moneyness
 		int moneyness = strikeToMoneyness(newStrike, spot, tTarget);
 		uint strikeOnEdgeBoard = moneynessToStrike(moneyness, spot, edgeBoardT);
 
-    return interpolateOrExtrapolateSkewWithinBoard(
+    return getNewSkewForExistingBoard(
 			newStrike,
 			orderedEdgeBoardStrikes,
 			orderedEdgeBoardSkews,
