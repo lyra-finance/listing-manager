@@ -177,41 +177,6 @@ library VolGenerator {
 	// Within Board //
 	//////////////////
 
-	function interpolateOrExtrapolateSkewWithinBoard(
-		uint newStrike,
-		uint[] orderedLiveStrikePrices,
-		uint[] orderedLiveSkews,
-		uint baseIv,
-		uint tAnnualized
-	) public pure returns (uint newSkew) {
-		uint numLiveStrikes = orderedLiveStrikePrices.length;
-		if (numLiveStrikes == 0) {
-			revert VG_NoStrikes();
-		}
-
-    // early return if found exact match
-		uint idx = orderedLiveStrikePrices.findUpperBound(newStrike);
-		if (orderedLiveStrikePrices[idx] == newStrike) {
-			return orderedLiveSkews[idx];
-		}
-
-		// determine whether to interpolate or extrapolate
-    if (idx == 0) {
-			return orderedLiveSkews[0];
-    } else if (idx == numLiveStrikes) {
-			return orderedLiveSkews[numLiveStrikes-1];
-    } else {
-			return interpolateSkewWithinBoard(
-				newStrike,
-				orderedLiveStrikePrices[idx - 1],
-				orderedLiveStrikePrices[idx],
-				orderedLiveSkews[idx - 1],
-				orderedLiveSkews[idx],
-				baseIv
-			);
-		}
-	}
-
   /**
    * @notice Interpolates skew for a new strike when given adjacent strikes.
    * @param newStrike The strike for which skew will be interpolated.
