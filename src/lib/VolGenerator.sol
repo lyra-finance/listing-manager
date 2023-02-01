@@ -8,7 +8,7 @@ import "newport/synthetix/DecimalMath.sol";
 import "newport/libraries/FixedPointMathLib.sol";
 import "newport/libraries/BlackScholes.sol";
 import "newport/libraries/Math.sol";
-import "lyra-utils/arrays/UnorderedMemoryArray.sol";
+import "lyra-utils/arrays/MemoryBinarySearch.sol";
 
 /**
  * @title Automated vol generator
@@ -22,56 +22,49 @@ library VolGenerator {
   using SignedDecimalMath for int;
   using FixedPointMathLib for int;
   using SafeCast for int;
-	using UnorderedMemoryArray for uint[];
+	using MemoryBinarySearch for uint[];
 
 	///////////////
 	// Constants //
 	///////////////
 
-  /// @dev For strike extrapolation, slope of totalVol(log-moneyness) is known to be bounded
-  ///      by 2 from Roger-Lee formula for large enough strikes
-  ///      we adopt this bound for all strike extrapolations to avoid unexpected overshooting
-  int private constant MAX_STRIKE_EXTRAPOLATION_SLOPE = 2e18;
-
 	//////////////////
 	// Within Board //
 	//////////////////
 
-	function interpolateOrExtrapolateWithinBoard(
+	function getSkewWithinBoard(
 		uint newStrike,
 		uint[] orderedLiveStrikePrices,
 		uint[] orderedLiveSkews,
 		uint baseIv,
 		uint tAnnualized
 	) public pure returns (uint newSkew) {
-		if (expiryData.strikes.length == 0) {
+		uint numLiveStrikes = orderedLiveStrikePrices.length;
+		if (numLiveStrikes == 0) {
 			revert VG_NoStrikes();
 		}
 
-		// if only 1 strike, cannot interpolate or extrapolate
-    if (expiryData.strikes.length == 1) {
-			return orderedLiveSkews[0];
+    // early return if found exact match
+		uint idx = orderedLiveStrikePrices.findUpperBound(newStrike);
+		if (orderedLiveStrikePrices[idx] == newStrike) {
+			return orderedLiveSkews[idx];
 		}
 
-    // early return if found match
-		// todo: can use binary search here but need to add memory binary search to lyra-utils
-		int index = orderedLiveStrikePrices.findInArray(newStrike, orderedLiveStrikePrices.length);
-		if (index >= 0) {
-			return orderedLiveSkews[uint(index)];
-		}
-
-    // if failed, interpolate / extrapolate
-    // ASSUME expiryData is already sorted!!!
-
-		// todo: should combine with above and just use binary search.
-    idx = _searchSorted(strikeValues, strikeTarget);
+		// determine whether to interpolate or extrapolate
     if (idx == 0) {
-      return _extrapolateStrike(expiryData, 0, strikeTarget);
-    }
-    if (idx == strikeValues.length) {
-      return _extrapolateStrike(expiryData, idx-1, strikeTarget);
-    }
-    return _interpolateStrike(expiryData, idx, strikeTarget);
+			return orderedLiveSkews[0];
+    } else if (idx == numLiveStrikes) {
+			return orderedLiveSkews[numLiveStrikes-1];
+    } else {
+			return interpolateSkewWithinBoard(
+				newStrike,
+				orderedLiveStrikePrices[idx - 1],
+				orderedLiveStrikePrices[idx],
+				orderedLiveSkews[idx - 1],
+				orderedLiveSkews[idx],
+				baseIv
+			);
+		}
 	}
 
   /**
@@ -113,57 +106,21 @@ library VolGenerator {
 		return vol.divideDecimal(baseIv);
   }
 
-	/**
-   * @notice Extrapolates a skew for a new strike from a "live" vol slice.
-   * @param newStrike The strike for which skew is found.
-   * @param edgeStrike The outermost strike that is nearest to the newStrike.
-   * @param insideStrike The strike adjacent to the edgeStrike, so that abs(newStrike) > abs(edgeStrike) > abs(insideStrike)
-   * @param edgeSkew The skew of the edgeStrike.
-   * @param insideSkew The skew of the insideStrike
-	 * @param baseIv The base volatility of the board
-   * @param tAnnualized The annualized time to expiry.
-	 * @return newSkew New strike's skew.
-   */
-  function extrapolateSkewWithinBoard(
-    uint newStrike,
-    uint edgeStrike,
-		uint insideStrike,
-		uint edgeSkew,
-		uint insideSkew,
-		uint baseIv,
-		uint tAnnualized
-  ) public pure returns (uint newSkew) {
-		// ensure strikes are properly ordered
-		if (!(newStrike < edgeStrike && edgeStrike < insideStrike) &&
-			!(insideStrike < edgeStrike && edgeStrike < newStrike)) {
-			revert VG_ImproperStrikeOrderDuringExtrapolation(insideStrike, edgeStrike, newStrike);
-		}
-
-		// convert strikes into ln space
-		int lnNewStrike = int(newStrike).ln();
-		int lnEdgeStrike = int(edgeStrike).ln();
-		int lnInsideStrike = int(insideStrike).ln();
-
-		// get variances
-		uint edgeVariance = getVariance(baseIv, edgeSkew).multiplyDecimal(tAnnualized);
-		uint insideVariance = getVariance(baseIv, insideSkew).multiplyDecimal(tAnnualized);
-
-		// get capped slope
-		int slope = (int(edgeVariance)-int(insideVariance)).divideDecimal(int(Math.abs(lnEdgeStrike-lnInsideStrike)));
-		if (slope < 0) {
-			slope = int(0);
-		} else if (slope > MAX_STRIKE_EXTRAPOLATION_SLOPE) {
-			slope = MAX_STRIKE_EXTRAPOLATION_SLOPE;
-		}
-
-		// extrapolate new skew
-		uint newVariance = edgeVariance + Math.abs(lnNewStrike-lnEdgeStrike).multiplyDecimal(uint(slope));
-		return BlackScholes._sqrt(newVariance.divideDecimal(tAnnualized) * DecimalMath.UNIT).divideDecimal(baseIv);
-  }
-
 	///////////////////
 	// Across Boards //
 	///////////////////
+
+	function getSkewAcrossBoards(
+		uint[][] orderedLiveStrikes,
+		uint[][] orderedSkews,
+		uint[] orderedBaseIvs,
+		uint[] orderedTAnnualized,
+		uint newStrike,
+		uint tTarget,
+		uint baseIv
+	) public pure returns (uint newSkew) {
+
+	}
 
 	/**
    * @notice Interpolates skew for a new baord using exact strikes from longer/shorted dated boards.
@@ -186,7 +143,7 @@ library VolGenerator {
 		uint rightT,
     uint tTarget,
 		uint baseIv
-) public pure returns (uint newSkew) {
+	) public pure returns (uint newSkew) {
 		if (!(leftT < tTarget && tTarget < rightT)) {
 			revert VG_ImproperExpiryOrderDuringInterpolation(leftT, tTarget, rightT);
 		}
@@ -215,6 +172,8 @@ library VolGenerator {
    */
   function extrapolateSkewAcrossBoards(
     uint newStrike,
+		uint[] memory orderedEdgeBoardStrikes,
+		uint[] memory orderedEdgeBoardSkews,
     uint edgeBoardT,
     uint tTarget,
     uint spot,
@@ -225,7 +184,13 @@ library VolGenerator {
 		int moneyness = strikeToMoneyness(newStrike, spot, tTarget);
 		uint strikeOnEdgeBoard = moneynessToStrike(moneyness, spot, edgeBoardT);
 
-    return interpolateOrExtrapolateWithinBoard();
+    return interpolateOrExtrapolateWithinBoard(
+			newStrike,
+			orderedEdgeBoardStrikes,
+			orderedEdgeBoardSkews,
+			baseIv, // todo [Josh]: is this the same baseIv for edge board and for new?
+			tTarget
+		);
   }
 
 	/////////////
@@ -300,4 +265,6 @@ library VolGenerator {
 	error VG_ImproperStrikeOrderDuringInterpolation(uint leftStrike, uint midStrike, uint rightStrike);
 	error VG_ImproperStrikeOrderDuringExtrapolation(uint insideStrike, uint edgeStrike, uint newStrike);
 	error VG_ImproperExpiryOrderDuringInterpolation(uint leftT, uint tTarget, uint rightT);
+
+	error VG_NoStrikes();
 }
