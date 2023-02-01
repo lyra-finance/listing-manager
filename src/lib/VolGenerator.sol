@@ -24,15 +24,105 @@ library VolGenerator {
   using SafeCast for int;
 	using MemoryBinarySearch for uint[];
 
-	///////////////
-	// Constants //
-	///////////////
+	////////////////////
+	// Board Indexing //
+	////////////////////
+
+	/**
+	 * @notice Returns the first index that has an expiry greater or equal to `tTarget`
+	 *			   Will return orderedTs.length if `tTarget` greater than all values in array.
+	 * @param tTarget Target board expiry to find for
+	 * @param orderedTs Ordered list of board timeToExpiries (can be annualized) in ascending order
+	 * @return upperBoundIdx Returns the closest index of the tAnnualized that is greater than or equal to `tTarget`
+	 */
+	function findBoardIndex(
+		uint tTarget,
+		uint[] memory orderedTs
+	) public pure returns (uint upperBoundIdx) {
+		return orderedTs.findUpperBound(tTarget);
+	}
+
+	///////////////////
+	// Across Boards //
+	///////////////////
+
+	/**
+   * @notice Interpolates skew for a new baord using exact strikes from longer/shorted dated boards.
+   * @param leftSkew Skew from same strike but shorter dated board.
+   * @param rightSkew Skew from same strike but longer dated board.
+   * @param leftBaseIv BaseIv of the shorter dated board.
+   * @param rightBaseIv BaseIv of the longer dated board.
+   * @param leftT Annualized time to expiry of the shorter dated board.
+	 * @param rightT Annualized time to expiry of the longer dated board.
+   * @param tTarget Annualied time to expiry of the targer strike
+   * @param baseIv BaseIv of the board with the new strike
+	 * @return newSkew New strike's skew.
+   */
+	function interpolateSkewAcrossBoards(
+    uint leftSkew,
+		uint rightSkew,
+		uint leftBaseIv,
+		uint rightBaseIv,
+		uint leftT,
+		uint rightT,
+    uint tTarget,
+		uint baseIv
+	) public pure returns (uint newSkew) {
+		if (!(leftT < tTarget && tTarget < rightT)) {
+			revert VG_ImproperExpiryOrderDuringInterpolation(leftT, tTarget, rightT);
+		}
+
+    uint ratio = (rightT - tTarget).divideDecimal(rightT - leftT);
+
+		// convert to variance
+		uint leftVariance = getVariance(leftBaseIv, leftSkew).multiplyDecimal(leftT);
+		uint rightVariance = getVariance(rightBaseIv, rightSkew).multiplyDecimal(rightT);
+
+		// interpolate
+		uint vol = sqrtWeightedAvg(ratio, leftVariance, rightVariance, tTarget);
+		return vol.divideDecimal(baseIv);
+  }
+
+	/**
+   * @notice Extrapolates skew for a strike on a new board.
+	 *			   Assumes: sigma(z(T1), T1) == sigma(z(T2), T2)
+   *				 i.e. "2mo 80-delta option" has same vol as "3mo 80-delta option".
+   * @param newStrike The "live" volatility slice in the form of ExpiryData.
+   * @param edgeBoardT The index of expiryArray's edge, i.e. 0 or expiryArray.length - 1
+   * @param tTarget The annualized time-to-expiry of the new surface user wants to generate.
+   * @param spot Current chainlink spot price.
+   * @param baseIv Value for ATM skew to anchor towards, e.g. 1e18 will ensure ATM skew is set to 1.0.
+   * @return newSkew Array of skews for each strike in strikeTargets.
+   */
+  function extrapolateSkewAcrossBoards(
+    uint newStrike,
+		uint[] memory orderedEdgeBoardStrikes,
+		uint[] memory orderedEdgeBoardSkews,
+    uint edgeBoardT,
+    uint tTarget,
+    uint spot,
+    uint baseIv
+  ) internal view returns (uint newSkew) {
+    ExpiryData memory expiryData = expiryArray[idx];
+    // map newStrike to a strike on the edge board with the same moneyness
+		int moneyness = strikeToMoneyness(newStrike, spot, tTarget);
+		uint strikeOnEdgeBoard = moneynessToStrike(moneyness, spot, edgeBoardT);
+
+    return interpolateOrExtrapolateSkewWithinBoard(
+			newStrike,
+			orderedEdgeBoardStrikes,
+			orderedEdgeBoardSkews,
+			baseIv, // todo [Josh]: is this the same baseIv for edge board and for new?
+			tTarget
+		);
+  }
+
 
 	//////////////////
 	// Within Board //
 	//////////////////
 
-	function getSkewWithinBoard(
+	function interpolateOrExtrapolateSkewWithinBoard(
 		uint newStrike,
 		uint[] orderedLiveStrikePrices,
 		uint[] orderedLiveSkews,
@@ -104,93 +194,6 @@ library VolGenerator {
 
 		uint vol = sqrtWeightedAvg(ratio, varianceLeft, varianceRight, 1e18);
 		return vol.divideDecimal(baseIv);
-  }
-
-	///////////////////
-	// Across Boards //
-	///////////////////
-
-	function getSkewAcrossBoards(
-		uint[][] orderedLiveStrikes,
-		uint[][] orderedSkews,
-		uint[] orderedBaseIvs,
-		uint[] orderedTAnnualized,
-		uint newStrike,
-		uint tTarget,
-		uint baseIv
-	) public pure returns (uint newSkew) {
-
-	}
-
-	/**
-   * @notice Interpolates skew for a new baord using exact strikes from longer/shorted dated boards.
-   * @param leftSkew Skew from same strike but shorter dated board.
-   * @param rightSkew Skew from same strike but longer dated board.
-   * @param leftBaseIv BaseIv of the shorter dated board.
-   * @param rightBaseIv BaseIv of the longer dated board.
-   * @param leftT Annualized time to expiry of the shorter dated board.
-	 * @param rightT Annualized time to expiry of the longer dated board.
-   * @param tTarget Annualied time to expiry of the targer strike
-   * @param baseIv BaseIv of the board with the new strike
-	 * @return newSkew New strike's skew.
-   */
-	function interpolateSkewAcrossBoards(
-    uint leftSkew,
-		uint rightSkew,
-		uint leftBaseIv,
-		uint rightBaseIv,
-		uint leftT,
-		uint rightT,
-    uint tTarget,
-		uint baseIv
-	) public pure returns (uint newSkew) {
-		if (!(leftT < tTarget && tTarget < rightT)) {
-			revert VG_ImproperExpiryOrderDuringInterpolation(leftT, tTarget, rightT);
-		}
-
-    uint ratio = (rightT - tTarget).divideDecimal(rightT - leftT);
-
-		// convert to variance
-		uint leftVariance = getVariance(leftBaseIv, leftSkew).multiplyDecimal(leftT);
-		uint rightVariance = getVariance(rightBaseIv, rightSkew).multiplyDecimal(rightT);
-
-		// interpolate
-		uint vol = sqrtWeightedAvg(ratio, leftVariance, rightVariance, tTarget);
-		return vol.divideDecimal(baseIv);
-  }
-
-	/**
-   * @notice Extrapolates skew for a strike on a new board.
-	 *			   Assumes: sigma(z(T1), T1) == sigma(z(T2), T2)
-   *				 i.e. "2mo 80-delta option" has same vol as "3mo 80-delta option".
-   * @param newStrike The "live" volatility slice in the form of ExpiryData.
-   * @param edgeBoardT The index of expiryArray's edge, i.e. 0 or expiryArray.length - 1
-   * @param tTarget The annualized time-to-expiry of the new surface user wants to generate.
-   * @param spot Current chainlink spot price.
-   * @param baseIv Value for ATM skew to anchor towards, e.g. 1e18 will ensure ATM skew is set to 1.0.
-   * @return newSkew Array of skews for each strike in strikeTargets.
-   */
-  function extrapolateSkewAcrossBoards(
-    uint newStrike,
-		uint[] memory orderedEdgeBoardStrikes,
-		uint[] memory orderedEdgeBoardSkews,
-    uint edgeBoardT,
-    uint tTarget,
-    uint spot,
-    uint baseIv
-  ) internal view returns (uint newSkew) {
-    ExpiryData memory expiryData = expiryArray[idx];
-    // map newStrike to a strike on the edge board with the same moneyness
-		int moneyness = strikeToMoneyness(newStrike, spot, tTarget);
-		uint strikeOnEdgeBoard = moneynessToStrike(moneyness, spot, edgeBoardT);
-
-    return interpolateOrExtrapolateWithinBoard(
-			newStrike,
-			orderedEdgeBoardStrikes,
-			orderedEdgeBoardSkews,
-			baseIv, // todo [Josh]: is this the same baseIv for edge board and for new?
-			tTarget
-		);
   }
 
 	/////////////
