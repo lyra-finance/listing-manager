@@ -25,9 +25,13 @@ library VolGenerator {
 	using MemoryBinarySearch for uint[];
 
 	struct Board {
+		// annualized time to expiry: 1 day == 1 / 365 in 18 decimal points
 		uint tAnnualized;
+		// base volatility of all the strikes in this board
 		uint baseIv;
+		// all strikes ordered in ascending order
 		uint[] orderedStrikePrices;
+		// all skews corresponding the order of strike prices
 		uint[] orderedSkews;
 	}
 
@@ -35,6 +39,17 @@ library VolGenerator {
 	// End to End //
 	////////////////
 
+	/**
+	 * @notice Returns the skew for a given strike 
+	 *				 when the new board has both an adjacent short and long dated boards.
+	 *				 E.g. for a new strike: 3mo time to expiry, and liveBoards: [1d, 1mo, 6mo]
+	 *				 The returned new strike volatility = baseIv * newSkew
+	 * @param newStrike the strike price for which to find the skew
+	 * @param tTarget annualized time to expiry
+	 * @param baseIv base volatility for the given strike
+	 * @param shortDatedBoard Board details of the board with a shorter time to expiry.
+	 * @param longDatedBoard Board details of the board with a longer time to expiry.
+	 */
 	function getSkewForNewBoard( // vs getNewSkewForNewBoard
 		uint newStrike,
 		uint tTarget,
@@ -67,6 +82,17 @@ library VolGenerator {
 		);
 	}
 
+	/**
+	 * @notice Returns the skew for a given strike 
+	 *				 when the new board does not have adjacent boards on both sides.
+	 *				 E.g. for a new strike: 3mo time to expiry, but liveBoards: [1d, 1w, 1mo]
+	 *				 The returned new strike volatility = baseIv * newSkew.
+	 * @param newStrike the strike price for which to find the skew
+	 * @param tTarget annualized time to expiry
+	 * @param baseIv base volatility for the given strike
+	 * @param shortDatedBoard Board details of the board with a shorter time to expiry.
+	 * @param longDatedBoard Board details of the board with a longer time to expiry.
+	 */
 	function getSkewForNewBoard(
 		uint newStrike,
 		uint tTarget,
@@ -85,6 +111,12 @@ library VolGenerator {
 		);
 	}
 
+	/**
+	 * @notice Returns the skew for a given strike that lies within an existing board.
+	 *				 The returned new strike volatility = baseIv * newSkew.
+	 * @param newStrike the strike price for which to find the skew
+	 * @param liveBoard Board details of the live board.
+	 */
 	function getSkewForLiveBoard(
 		uint newStrike,
 		Board memory liveBoard
