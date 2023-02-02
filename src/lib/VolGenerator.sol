@@ -31,69 +31,91 @@ library VolGenerator {
 		uint[] orderedSkews;
 	}
 
-	// ////////////////////
-	// // Board Indexing //
-	// ////////////////////
-
-	// /**
-	//  * @notice Returns the first index that has an expiry greater or equal to `tTarget`
-	//  *			   Will return orderedTs.length if `tTarget` greater than all values in array.
-	//  * @param tTarget Target board expiry to find for
-	//  * @param orderedTs Ordered list of board timeToExpiries (can be annualized) in ascending order
-	//  * @return upperBoundIdx Returns the closest index of the tAnnualized that is greater than or equal to `tTarget`
-	//  */
-	// function findBoardIndex(
-	// 	uint tTarget,
-	// 	uint[] memory orderedTs
-	// ) public pure returns (uint upperBoundIdx) {
-	// 	return orderedTs.findUpperBound(tTarget);
-	// }
-
 	////////////////
 	// End to End //
 	////////////////
 
-	function getNewSkewForNewBoard( // vs getNewSkewForNewBoard
-		Board[] memory orderedBoards; // can simplify down to just left and right
+	function getSkewForNewBoard( // vs getNewSkewForNewBoard
 		uint newStrike,
 		uint tTarget,
-		uint baseIv
-	) public pure {
-		// todo: need to think from perspective of when across vs within boards is used
-		// these two are usually quite separate
+		uint baseIv,
+		Board memory shortDatedBoard,
+		Board memory longDatedBoard
+	) public pure returns (uint newSkew) {
+
+		// get matching skews of adjacent boards
+		uint shortDatedSkew = getSkewForLiveBoard(
+			newStrike,
+			shortDatedBoard
+		);
+
+		uint longDatedSkew = getSkewForLiveBoard(
+			newStrike,
+			longDatedBoard
+		);
+
+		// interpolate skews
+		return interpolateSkewAcrossBoards(
+			shortDatedSkew,
+			longDatedSkew,
+			shortDatedBoard.baseIv,
+			longDatedBoard.baseIv,
+			shortDatedBoard.tAnnualized,
+			longDatedBoard.tAnnualized,
+			tTarget,
+			baseIv
+		);
 	}
 
-	function getNewSkewForExistingBoard(
+	function getSkewForNewBoard(
 		uint newStrike,
-		uint[] orderedLiveStrikePrices,
-		uint[] orderedLiveSkews,
+		uint tTarget,
 		uint baseIv,
-		uint tAnnualized
+		uint spot,
+		Board memory edgeBoard
 	) public pure returns (uint newSkew) {
-		uint numLiveStrikes = orderedLiveStrikePrices.length;
+		return extrapolateSkewAcrossBoards(
+			newStrike,
+			edgeBoard.orderedStrikePrices,
+			edgeBoard.orderedSkews,
+			edgeBoard.tAnnualized,
+			tTarget,
+			baseIv,
+			spot
+		);
+	}
+
+	function getSkewForLiveBoard(
+		uint newStrike,
+		Board memory liveBoard
+	) public pure returns (uint newSkew) {
+		uint[] memory strikePrices = liveBoard.orderedStrikePrices;
+		uint[] memory skews = liveBoard.orderedSkews;
+
+		uint numLiveStrikes = strikePrices.length;
 		if (numLiveStrikes == 0) {
 			revert VG_NoStrikes();
 		}
 
     // early return if found exact match
-		uint idx = orderedLiveStrikePrices.findUpperBound(newStrike);
-		if (orderedLiveStrikePrices[idx] == newStrike) {
-			return orderedLiveSkews[idx];
+		uint idx = strikePrices.findUpperBound(newStrike);
+		if (strikePrices[idx] == newStrike) {
+			return skews[idx];
 		}
 
 		// determine whether to interpolate or extrapolate
     if (idx == 0) {
-			return orderedLiveSkews[0];
+			return skews[0];
     } else if (idx == numLiveStrikes) {
-			return orderedLiveSkews[numLiveStrikes-1];
+			return skews[numLiveStrikes-1];
     } else {
 			return interpolateSkewWithinBoard(
 				newStrike,
-				orderedLiveStrikePrices[idx - 1],
-				orderedLiveStrikePrices[idx],
-				orderedLiveSkews[idx - 1],
-				orderedLiveSkews[idx],
-				baseIv
+				strikePrices[idx - 1],
+				strikePrices[idx],
+				skews[idx - 1],
+				skews[idx],
+				liveBoard.baseIv
 			);
 		}
 	}
@@ -156,19 +178,21 @@ library VolGenerator {
 		uint[] memory orderedEdgeBoardSkews,
     uint edgeBoardT,
     uint tTarget,
-    uint spot,
-    uint baseIv
-  ) internal view returns (uint newSkew) {
+    uint baseIv,
+		uint spot
+  ) internal pure returns (uint newSkew) {
     // map newStrike to a strike on the edge board with the same moneyness
 		int moneyness = strikeToMoneyness(newStrike, spot, tTarget);
 		uint strikeOnEdgeBoard = moneynessToStrike(moneyness, spot, edgeBoardT);
 
-    return getNewSkewForExistingBoard(
-			newStrike,
-			orderedEdgeBoardStrikes,
-			orderedEdgeBoardSkews,
-			baseIv, // todo [Josh]: is this the same baseIv for edge board and for new?
-			tTarget
+    return getSkewForLiveBoard(
+			strikeOnEdgeBoard,
+			Board({
+				orderedStrikePrices: orderedEdgeBoardStrikes,
+				orderedSkews: orderedEdgeBoardSkews,
+				baseIv: baseIv, // todo [Josh]: is this the same baseIv for edge board and for new?
+				tAnnualized: tTarget
+			})
 		);
   }
 
@@ -252,8 +276,9 @@ library VolGenerator {
     int moneyness,
     uint spot,
     uint tAnnualized
-  ) internal view returns (uint strike) { unchecked {
-    strike = moneyness.multiplyDecimal(int(sqrt(tAnnualized))).exp().multiplyDecimal(spot);
+  ) public pure returns (uint strike) { unchecked {
+    strike = moneyness.multiplyDecimal(int(BlackScholes._sqrt(tAnnualized * DecimalMath.UNIT)))
+			.exp().multiplyDecimal(spot);
   }}
 
 	/**
