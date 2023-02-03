@@ -6,12 +6,12 @@ import "src/lib/VolGenerator.sol";
 import "test/mocks/VolGeneratorTester.sol";
 contract VolGeneratorWithinBoardTest is Test {
   VolGeneratorTester tester;
-  
+
   function setUp() public {
     tester = new VolGeneratorTester();
   }
 
-  function testInterpolation() public {
+  function testInterpolationRandom() public {
     VolGenerator.Board memory liveBoard = getLiveBoardA();
 
     // Strike: $1425

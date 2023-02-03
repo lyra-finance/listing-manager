@@ -10,6 +10,8 @@ import "newport/synthetix/SignedDecimalMath.sol";
 import "newport/libraries/FixedPointMathLib.sol";
 import "lyra-utils/arrays/MemoryBinarySearch.sol";
 
+import "forge-std/console2.sol";
+
 /**
  * @title Automated vol generator
  * @author Lyra
@@ -57,7 +59,7 @@ library VolGenerator {
     uint baseIv,
     Board memory shortDatedBoard,
     Board memory longDatedBoard
-  ) public pure returns (uint newSkew) {
+  ) public view returns (uint newSkew) {
     // get matching skews of adjacent boards
     uint shortDatedSkew = getSkewForLiveBoard(newStrike, shortDatedBoard);
 
@@ -93,7 +95,7 @@ library VolGenerator {
     uint baseIv,
     uint spot,
     Board memory edgeBoard
-  ) public pure returns (uint newSkew) {
+  ) public view returns (uint newSkew) {
     return _extrapolateSkewAcrossBoards(
       newStrike, edgeBoard.orderedStrikePrices, edgeBoard.orderedSkews, edgeBoard.tAnnualized, tTarget, baseIv, spot
     );
@@ -106,7 +108,7 @@ library VolGenerator {
    * @param liveBoard Board details of the live board
    * @return newSkew Estimated skew of the new strike
    */
-  function getSkewForLiveBoard(uint newStrike, Board memory liveBoard) public pure returns (uint newSkew) {
+  function getSkewForLiveBoard(uint newStrike, Board memory liveBoard) public view returns (uint newSkew) {
     uint[] memory strikePrices = liveBoard.orderedStrikePrices;
     uint[] memory skews = liveBoard.orderedSkews;
 
@@ -193,7 +195,7 @@ library VolGenerator {
     uint tTarget,
     uint baseIv,
     uint spot
-  ) internal pure returns (uint newSkew) {
+  ) internal view returns (uint newSkew) {
     // map newStrike to a strike on the edge board with the same moneyness
     int moneyness = strikeToMoneyness(newStrike, spot, tTarget);
     uint strikeOnEdgeBoard = moneynessToStrike(moneyness, spot, edgeBoardT);
@@ -230,7 +232,7 @@ library VolGenerator {
     uint leftSkew,
     uint rightSkew,
     uint baseIv
-  ) internal pure returns (uint newSkew) {
+  ) internal view returns (uint newSkew) {
     // ensure mid strike is actually in the middle
     if (!(leftStrike < newStrike && newStrike < rightStrike)) {
       revert VG_ImproperStrikeOrderDuringInterpolation(leftStrike, newStrike, rightStrike);
@@ -247,6 +249,9 @@ library VolGenerator {
 
     // interpolate
     uint ratio = SafeCast.toUint256((lnRStrike - lnMStrike).divideDecimal(lnRStrike - lnLStrike));
+
+		console2.log("left weight", varianceLeft);
+		console2.log("right weight", varianceRight);
 
     uint vol = sqrtWeightedAvg(ratio, varianceLeft, varianceRight, 1e18);
     return vol.divideDecimal(baseIv);
