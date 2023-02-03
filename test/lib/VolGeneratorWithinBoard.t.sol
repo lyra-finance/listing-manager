@@ -4,10 +4,9 @@ pragma solidity ^0.8.13;
 import "forge-std/Test.sol";
 import "src/lib/VolGenerator.sol";
 import "test/mocks/VolGeneratorTester.sol";
-contract VolGeneratorTest is Test {
+contract VolGeneratorWithinBoardTest is Test {
   VolGeneratorTester tester;
-  uint defaultATMSkew = 1e18;
-
+  
   function setUp() public {
     tester = new VolGeneratorTester();
   }
@@ -80,7 +79,7 @@ contract VolGeneratorTest is Test {
     return (sec * 1e18) / uint(365 days);
   }
 
-  function getLiveBoardA() internal returns (VolGenerator.Board memory) {
+  function getLiveBoardA() internal pure returns (VolGenerator.Board memory) {
     // Live Board A setup
     uint[] memory strikes = new uint[](5);
     strikes[0] = 1400e18;
@@ -104,7 +103,7 @@ contract VolGeneratorTest is Test {
     });
   }
 
-  function getLiveBoardB() internal returns (VolGenerator.Board memory) {
+  function getLiveBoardB() internal pure returns (VolGenerator.Board memory) {
     uint[] memory strikes = new uint[](5);
     strikes[0] = 1300e18;
     strikes[1] = 1400e18;

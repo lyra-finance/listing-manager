@@ -30,15 +30,15 @@ contract StrikePriceTester {
     return StrikePriceGenerator.getLeftNearestPivot(pivots, spot);
   }
 
-  function getStep(uint nearestPivot, uint tTarget) public view returns (uint) {
+  function getStep(uint nearestPivot, uint tTarget) public pure returns (uint) {
     return StrikePriceGenerator.getStep(nearestPivot, tTarget);
   }
 
-  function getATMStrike(uint spot, uint nearestPivot, uint step) public view returns (uint) {
+  function getATMStrike(uint spot, uint nearestPivot, uint step) public pure returns (uint) {
     return StrikePriceGenerator.getATMStrike(spot, nearestPivot, step);
   }
 
-  function getStrikeRange(uint tTarget, uint spot, uint maxScaledMoneyness) public view returns (uint, uint) {
+  function getStrikeRange(uint tTarget, uint spot, uint maxScaledMoneyness) public pure returns (uint, uint) {
     return StrikePriceGenerator.getStrikeRange(tTarget, spot, maxScaledMoneyness);
   }
 }
