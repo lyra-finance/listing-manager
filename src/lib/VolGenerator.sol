@@ -117,7 +117,7 @@ library VolGenerator {
 
     // early return if found exact match
     uint idx = strikePrices.findUpperBound(newStrike);
-    if (strikePrices[idx] == newStrike) {
+    if (idx != numLiveStrikes && strikePrices[idx] == newStrike) {
       return skews[idx];
     }
 
