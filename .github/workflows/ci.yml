@@ -19,7 +19,7 @@ jobs:
         run: $HOME/.ssh && echo "$LYRA_UTILS_SSH" > $HOME/.ssh/id_rsa && chmod 600 $HOME/.ssh/id_rsa
       
       - name: Install Submodules
-      - run: git submodule update --init --recursive
+        run: git submodule update --init --recursive
 
       - name: Install Foundry
         uses: onbjerg/foundry-toolchain@v1
