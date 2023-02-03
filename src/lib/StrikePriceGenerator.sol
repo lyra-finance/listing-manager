@@ -13,8 +13,8 @@ import "forge-std/console2.sol";
  * @title Automated strike price generator
  * @author Lyra
  * @notice The library automatically generates strike prices for various expiries as spot fluctuates.
- *         The intent is to automate away the decision making on which strikes to list,
- *         while generating boards with strike price that span a reasonable delta range.
+ * The intent is to automate away the decision making on which strikes to list,
+ * while generating boards with strike price that span a reasonable delta range.
  */
 library StrikePriceGenerator {
   using DecimalMath for uint;
@@ -26,16 +26,17 @@ library StrikePriceGenerator {
    * @param tTarget The annualized time-to-expiry of the new surface to generate.
    * @param spot Current chainlink spot price.
    * @param maxScaledMoneyness Caller must pre-compute maxScaledMoneyness from governance parameters.
-   *                           Typically one param would be a static MAX_D1, e.g. MAX_D1 = 1.2, which would
-   *                           be mapped out of the desired delta range. Since delta=N(d1), if we want to bound
-   *                           the delta to say (10, 90) range, we can simply bound d1 to be in (-1.2, 1.2) range.
-   *                           Second param would be some approx volatility baseline, e.g. MONEYNESS_SCALER.
-   *                           This param can be maintained by governance or taken to be some baseIv GVAW.
-   *                           It since d1 = ln(K/S) / (sigma * sqrt(T)), some proxy for sigma is needed to
-   *                           solve for K from d1.
-   *                           Together, maxScaledMoneyness = MAX_D1 * MONEYNESS_SCALER is expected to be passed here.
+   * Typically one param would be a static MAX_D1, e.g. MAX_D1 = 1.2, which would
+   * be mapped out of the desired delta range. Since delta=N(d1), if we want to bound
+   * the delta to say (10, 90) range, we can simply bound d1 to be in (-1.2, 1.2) range.
+   * Second param would be some approx volatility baseline, e.g. MONEYNESS_SCALER.
+   * This param can be maintained by governance or taken to be some baseIv GVAW.
+   * It since d1 = ln(K/S) / (sigma * sqrt(T)), some proxy for sigma is needed to
+   * solve for K from d1.
+   * Together, maxScaledMoneyness = MAX_D1 * MONEYNESS_SCALER is expected to be passed here.
    * @param maxNumStrikes A cap on how many strikes can be in a single board.
    * @param liveStrikes Array of strikes that already exist in the board, will avoid generating them.
+   * @param pivots TODO
    * @return newStrikes The additional strikes that must be added to the board.
    */
   function getNewStrikes(
@@ -153,7 +154,7 @@ library StrikePriceGenerator {
   /**
    * @notice Returns the strike step corresponding to the pivot bucket and the time-to-expiry.
    * @dev Since vol is approx ~ sqrt(T), it makes sense to double the step size
-   *      every time tAnnualized is roughly quadripled
+   * every time tAnnualized is roughly quadripled
    * @param p The pivot strike.
    * @param tAnnualized Years to expiry, 18 decimals.
    * @return step The strike step size at this pivot and tAnnualized.
@@ -220,7 +221,9 @@ library StrikePriceGenerator {
    */
   function _existsIn(uint[] memory values, uint target) internal pure returns (bool exists) {
     for (uint i = 0; i < values.length; i++) {
-      if (target == values[i]) return true;
+      if (target == values[i]) {
+        return true;
+      }
     }
 
     return false;
