@@ -2,12 +2,12 @@
 pragma solidity 0.8.16;
 
 import "openzeppelin/utils/math/SafeCast.sol";
+import "openzeppelin/utils/math/Math.sol";
 import "newport/synthetix/DecimalMath.sol";
+import "newport/synthetix/SignedDecimalMath.sol";
 
 // todo: maybe use the new Black76 and FixedPointMathLib and get those audited
 import "newport/libraries/FixedPointMathLib.sol";
-import "newport/libraries/BlackScholes.sol";
-import "newport/libraries/Math.sol";
 import "lyra-utils/arrays/MemoryBinarySearch.sol";
 
 /**
@@ -270,7 +270,7 @@ library VolGenerator {
   function strikeToMoneyness(uint strike, uint spot, uint tAnnualized) public pure returns (int moneyness) {
     unchecked {
       moneyness =
-        int(strike.divideDecimal(spot)).ln().divideDecimal(int(BlackScholes._sqrt(tAnnualized * DecimalMath.UNIT)));
+        int(strike.divideDecimal(spot)).ln().divideDecimal(int(Math.sqrt(tAnnualized * DecimalMath.UNIT)));
     }
   }
 
@@ -284,7 +284,7 @@ library VolGenerator {
   function moneynessToStrike(int moneyness, uint spot, uint tAnnualized) public pure returns (uint strike) {
     unchecked {
       strike =
-        moneyness.multiplyDecimal(int(BlackScholes._sqrt(tAnnualized * DecimalMath.UNIT))).exp().multiplyDecimal(spot);
+        moneyness.multiplyDecimal(int(Math.sqrt(tAnnualized * DecimalMath.UNIT))).exp().multiplyDecimal(spot);
     }
   }
 
@@ -308,7 +308,7 @@ library VolGenerator {
   ) public pure returns (uint) {
     uint weightedAvg = leftVal.multiplyDecimal(leftWeight) + (DecimalMath.UNIT - leftVal).multiplyDecimal(rightWeight);
 
-    return BlackScholes._sqrt(weightedAvg.divideDecimal(denominator) * DecimalMath.UNIT);
+    return Math.sqrt(weightedAvg.divideDecimal(denominator) * DecimalMath.UNIT);
   }
 
   ////////////

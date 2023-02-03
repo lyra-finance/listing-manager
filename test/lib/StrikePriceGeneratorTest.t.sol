@@ -240,7 +240,7 @@ contract StrikePriceGeneratorTest is Test {
   // Helpers //
   /////////////
 
-  function _secToAnnualized(uint sec) internal pure returns (uint) {
+  function _secToAnnualized(uint sec) public pure returns (uint) {
     return (sec * 1e18) / uint(365 days);
   }
 }
