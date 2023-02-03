@@ -51,12 +51,13 @@ library VolGenerator {
    * @param longDatedBoard Board details of the board with a longer time to expiry.
    * @return newSkew Estimated skew of the new strike
    */
-  function getSkewForNewBoard( // vs getNewSkewForNewBoard
-  uint newStrike, uint tTarget, uint baseIv, Board memory shortDatedBoard, Board memory longDatedBoard)
-    public
-    pure
-    returns (uint newSkew)
-  {
+  function getSkewForNewBoard(
+    uint newStrike,
+    uint tTarget,
+    uint baseIv,
+    Board memory shortDatedBoard,
+    Board memory longDatedBoard
+  ) public pure returns (uint newSkew) {
     // get matching skews of adjacent boards
     uint shortDatedSkew = getSkewForLiveBoard(newStrike, shortDatedBoard);
 
@@ -86,11 +87,13 @@ library VolGenerator {
    * @param edgeBoard Board details of the board with a shorter or longer time to expiry
    * @return newSkew Estimated skew of the new strike
    */
-  function getSkewForNewBoard(uint newStrike, uint tTarget, uint baseIv, uint spot, Board memory edgeBoard)
-    public
-    pure
-    returns (uint newSkew)
-  {
+  function getSkewForNewBoard(
+    uint newStrike,
+    uint tTarget,
+    uint baseIv,
+    uint spot,
+    Board memory edgeBoard
+  ) public pure returns (uint newSkew) {
     return extrapolateSkewAcrossBoards(
       newStrike, edgeBoard.orderedStrikePrices, edgeBoard.orderedSkews, edgeBoard.tAnnualized, tTarget, baseIv, spot
     );
@@ -297,11 +300,12 @@ library VolGenerator {
     return variance.multiplyDecimal(variance);
   }
 
-  function sqrtWeightedAvg(uint leftVal, uint leftWeight, uint rightWeight, uint denominator)
-    public
-    pure
-    returns (uint)
-  {
+  function sqrtWeightedAvg(
+    uint leftVal,
+    uint leftWeight,
+    uint rightWeight,
+    uint denominator
+  ) public pure returns (uint) {
     uint weightedAvg = leftVal.multiplyDecimal(leftWeight) + (DecimalMath.UNIT - leftVal).multiplyDecimal(rightWeight);
 
     return BlackScholes._sqrt(weightedAvg.divideDecimal(denominator) * DecimalMath.UNIT);
