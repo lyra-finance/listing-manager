@@ -198,9 +198,9 @@ library StrikePriceGenerator {
         nextStrike = atmStrike + stepFromAtm;
       }
 
-      if (liveStrikes.findInArray(nextStrike, liveStrikes.length) == -1
-        && (nextStrike > minStrike) 
-        && (nextStrike < maxStrike)
+      if (
+        liveStrikes.findInArray(nextStrike, liveStrikes.length) == -1 && (nextStrike > minStrike)
+          && (nextStrike < maxStrike)
       ) {
         newStrikes[numAdded++] = nextStrike;
         remainNumStrikes--;
