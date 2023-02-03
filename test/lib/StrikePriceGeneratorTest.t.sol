@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import "forge-std/Test.sol";
 import "forge-std/StdJson.sol";
 
-import "../src/lib/StrikePriceGenerator.sol";
+import "src/lib/StrikePriceGenerator.sol";
 
 contract StrikePriceTester {
   // todo [Josh]: can probably hardcode

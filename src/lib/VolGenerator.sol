@@ -64,7 +64,7 @@ library VolGenerator {
     uint longDatedSkew = getSkewForLiveBoard(newStrike, longDatedBoard);
 
     // interpolate skews
-    return interpolateSkewAcrossBoards(
+    return _interpolateSkewAcrossBoards(
       shortDatedSkew,
       longDatedSkew,
       shortDatedBoard.baseIv,
@@ -94,7 +94,7 @@ library VolGenerator {
     uint spot,
     Board memory edgeBoard
   ) public pure returns (uint newSkew) {
-    return extrapolateSkewAcrossBoards(
+    return _extrapolateSkewAcrossBoards(
       newStrike, edgeBoard.orderedStrikePrices, edgeBoard.orderedSkews, edgeBoard.tAnnualized, tTarget, baseIv, spot
     );
   }
@@ -127,7 +127,7 @@ library VolGenerator {
     } else if (idx == numLiveStrikes) {
       return skews[numLiveStrikes - 1];
     } else {
-      return interpolateSkewWithinBoard(
+      return _interpolateSkewWithinBoard(
         newStrike, strikePrices[idx - 1], strikePrices[idx], skews[idx - 1], skews[idx], liveBoard.baseIv
       );
     }
@@ -149,7 +149,7 @@ library VolGenerator {
    * @param baseIv BaseIv of the board with the new strike
    * @return newSkew New strike's skew.
    */
-  function interpolateSkewAcrossBoards(
+  function _interpolateSkewAcrossBoards(
     uint leftSkew,
     uint rightSkew,
     uint leftBaseIv,
@@ -158,7 +158,7 @@ library VolGenerator {
     uint rightT,
     uint tTarget,
     uint baseIv
-  ) public pure returns (uint newSkew) {
+  ) internal pure returns (uint newSkew) {
     if (!(leftT < tTarget && tTarget < rightT)) {
       revert VG_ImproperExpiryOrderDuringInterpolation(leftT, tTarget, rightT);
     }
@@ -185,7 +185,7 @@ library VolGenerator {
    * @param baseIv Value for ATM skew to anchor towards, e.g. 1e18 will ensure ATM skew is set to 1.0.
    * @return newSkew Array of skews for each strike in strikeTargets.
    */
-  function extrapolateSkewAcrossBoards(
+  function _extrapolateSkewAcrossBoards(
     uint newStrike,
     uint[] memory orderedEdgeBoardStrikes,
     uint[] memory orderedEdgeBoardSkews,
@@ -223,14 +223,14 @@ library VolGenerator {
    * @param baseIv The base volatility of the board
    * @return newSkew New strike's skew.
    */
-  function interpolateSkewWithinBoard(
+  function _interpolateSkewWithinBoard(
     uint newStrike,
     uint leftStrike,
     uint rightStrike,
     uint leftSkew,
     uint rightSkew,
     uint baseIv
-  ) public pure returns (uint newSkew) {
+  ) internal pure returns (uint newSkew) {
     // ensure mid strike is actually in the middle
     if (!(leftStrike < newStrike && newStrike < rightStrike)) {
       revert VG_ImproperStrikeOrderDuringInterpolation(leftStrike, newStrike, rightStrike);
