@@ -13,6 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
+          ssh-key: ${{ secrets.LYRA_UTILS }}
           submodules: recursive
       - name: Install Foundry
         uses: onbjerg/foundry-toolchain@v1
