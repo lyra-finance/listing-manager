@@ -185,7 +185,6 @@ library StrikePriceGenerator {
       remainNumStrikes--;
     }
 
-    bool doesNotExist;
     bool isLeft = true;
     uint nextStrike;
     uint stepFromAtm;
@@ -199,8 +198,10 @@ library StrikePriceGenerator {
         nextStrike = atmStrike + stepFromAtm;
       }
 
-      doesNotExist = liveStrikes.findInArray(nextStrike, liveStrikes.length) == -1;
-      if (doesNotExist && (nextStrike > minStrike) && (nextStrike < maxStrike)) {
+      if (
+        liveStrikes.findInArray(nextStrike, liveStrikes.length) == -1 && (nextStrike > minStrike)
+          && (nextStrike < maxStrike)
+      ) {
         newStrikes[numAdded++] = nextStrike;
         remainNumStrikes--;
       }
