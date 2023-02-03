@@ -13,7 +13,7 @@ contract VolGeneratorAcrossBoardTest is Test {
     tester = new VolGeneratorTester();
   }
 
-  function testInterpolationCloseToLeftPoint() public {
+  function testInterpolationCloseToShortDatedBoard() public {
     VolGenerator.Board memory shortDatedBoard = getLiveBoardA();
     VolGenerator.Board memory longDatedBoard = getLiveBoardB();
     uint tTarget = _secToAnnualized(12 days);
@@ -43,6 +43,22 @@ contract VolGeneratorAcrossBoardTest is Test {
     // strike $1600
     newSkew = tester.getSkewForNewBoard(1600e18, tTarget, baseIv, shortDatedBoard, longDatedBoard);
     assertApproxEqAbs(newSkew, 0.8545273360149661e18, 1e10);
+  }
+
+  function testInterpolationCloseToLongDatedBoard() public {
+    VolGenerator.Board memory shortDatedBoard = getLiveBoardA();
+    VolGenerator.Board memory longDatedBoard = getLiveBoardB();
+    uint tTarget = _secToAnnualized(20 days);
+
+    // get Base IV first: 
+    uint atmVol = tester.getSkewForNewBoard(defaultSpot, tTarget, 1e18, shortDatedBoard, longDatedBoard);
+    uint baseIv = atmVol * 1e18 / defaultATMSkew;
+    // todo: this completely off
+    assertApproxEqAbs(baseIv, 0.549204794896532e18, 1e10); 
+
+    // strike $1375
+    uint newSkew = tester.getSkewForNewBoard(1375e18, tTarget, baseIv, shortDatedBoard, longDatedBoard);
+    assertApproxEqAbs(newSkew, 1.385018203566507e18, 1e10);
   }
 
   /////////////
