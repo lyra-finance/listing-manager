@@ -4,6 +4,7 @@ pragma solidity ^0.8.13;
 import "forge-std/Test.sol";
 import "src/lib/VolGenerator.sol";
 import "test/mocks/VolGeneratorTester.sol";
+
 contract VolGeneratorWithinBoardTest is Test {
   VolGeneratorTester tester;
 
@@ -124,7 +125,5 @@ contract VolGeneratorWithinBoardTest is Test {
       orderedStrikePrices: strikes,
       orderedSkews: skews
     });
-
   }
-
 }

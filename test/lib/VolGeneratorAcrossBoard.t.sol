@@ -4,6 +4,7 @@ pragma solidity ^0.8.13;
 import "forge-std/Test.sol";
 import "src/lib/VolGenerator.sol";
 import "test/mocks/VolGeneratorTester.sol";
+
 contract VolGeneratorAcrossBoardTest is Test {
   VolGeneratorTester tester;
   uint defaultATMSkew = 1e18;
@@ -18,11 +19,11 @@ contract VolGeneratorAcrossBoardTest is Test {
     VolGenerator.Board memory longDatedBoard = getLiveBoardB();
     uint tTarget = _secToAnnualized(12 days);
 
-    // get Base IV first: 
+    // get Base IV first:
     uint atmVol = tester.getSkewForNewBoard(defaultSpot, tTarget, 1e18, shortDatedBoard, longDatedBoard);
     uint baseIv = atmVol * 1e18 / defaultATMSkew;
     // todo: double check that ok to be off by 1e16
-    assertApproxEqAbs(baseIv, 0.5965411413724958e18, 1e10); 
+    assertApproxEqAbs(baseIv, 0.5965411413724958e18, 1e10);
 
     // strike $1400
     uint newSkew = tester.getSkewForNewBoard(1400e18, tTarget, baseIv, shortDatedBoard, longDatedBoard);
@@ -50,11 +51,11 @@ contract VolGeneratorAcrossBoardTest is Test {
     VolGenerator.Board memory longDatedBoard = getLiveBoardB();
     uint tTarget = _secToAnnualized(20 days);
 
-    // get Base IV first: 
+    // get Base IV first:
     uint atmVol = tester.getSkewForNewBoard(defaultSpot, tTarget, 1e18, shortDatedBoard, longDatedBoard);
     uint baseIv = atmVol * 1e18 / defaultATMSkew;
     // todo: this completely off
-    assertApproxEqAbs(baseIv, 0.549204794896532e18, 1e10); 
+    assertApproxEqAbs(baseIv, 0.549204794896532e18, 1e10);
 
     // strike $1375
     uint newSkew = tester.getSkewForNewBoard(1375e18, tTarget, baseIv, shortDatedBoard, longDatedBoard);
@@ -75,12 +76,11 @@ contract VolGeneratorAcrossBoardTest is Test {
     // strike $1700
     newSkew = tester.getSkewForNewBoard(1700e18, tTarget, baseIv, shortDatedBoard, longDatedBoard);
     assertApproxEqAbs(newSkew, 1.4404005130335995e18, 1e10);
-
   }
 
-  // todo: finish 
-  function testExtrapolateloseToExisting() public {
-    // // todo: finish 
+  // todo: finish
+  function testExtrapolateloseToExisting_TODO() public {
+    // // todo: finish
     // tAnnualized: 22/365,
     // strikes: [1310, 1455.05, 1511.10, 1600, 1774],
 
@@ -93,10 +93,10 @@ contract VolGeneratorAcrossBoardTest is Test {
     // "strikePrice":1774,"skew":1.3479303458157745
   }
 
-  function testExtrapolateLargeExpiryFarFromExisting() public {
+  function testExtrapolateLargeExpiryFarFromExisting_TODO() public {
     // tAnnualized: 90/365,
     // strikes: [1200, 1300, 1400, 1500, 1600, 1700, 1800]
-    
+
     // // result:
     // "baseIv":0.6096737568875953
     // "strikePrice":1200,"skew":1.325017547816124
@@ -108,7 +108,7 @@ contract VolGeneratorAcrossBoardTest is Test {
     // "strikePrice":1800,"skew":0.9411536105973298
   }
 
-  function testExtrapolateSmallExpiryFarFromExisting() public {
+  function testExtrapolateSmallExpiryFarFromExisting_TODO() public {
     // tAnnualized: 1/365,
     // strikes: [1200, 1300, 1400, 1500, 1600, 1700, 1800]
 
@@ -176,7 +176,5 @@ contract VolGeneratorAcrossBoardTest is Test {
       orderedStrikePrices: strikes,
       orderedSkews: skews
     });
-
   }
-
 }

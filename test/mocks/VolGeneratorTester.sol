@@ -4,7 +4,6 @@ pragma solidity ^0.8.13;
 import "src/lib/VolGenerator.sol";
 
 contract VolGeneratorTester {
-
   function getSkewForNewBoard(
     uint newStrike,
     uint tTarget,
@@ -12,9 +11,7 @@ contract VolGeneratorTester {
     VolGenerator.Board memory shortDatedBoard,
     VolGenerator.Board memory longDatedBoard
   ) external view returns (uint newSkew) {
-    return VolGenerator.getSkewForNewBoard(
-      newStrike, tTarget, baseIv, shortDatedBoard, longDatedBoard
-    );
+    return VolGenerator.getSkewForNewBoard(newStrike, tTarget, baseIv, shortDatedBoard, longDatedBoard);
   }
 
   function getSkewForNewBoard(
@@ -28,9 +25,9 @@ contract VolGeneratorTester {
   }
 
   function getSkewForLiveBoard(
-    uint newStrike, VolGenerator.Board memory liveBoard
+    uint newStrike,
+    VolGenerator.Board memory liveBoard
   ) external view returns (uint newSkew) {
     return VolGenerator.getSkewForLiveBoard(newStrike, liveBoard);
   }
-
 }

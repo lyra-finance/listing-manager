@@ -97,14 +97,14 @@ library VolGenerator {
     Board memory edgeBoard
   ) public view returns (uint newSkew) {
     return _extrapolateSkewAcrossBoards(
-      newStrike, 
-			edgeBoard.orderedStrikePrices, 
-			edgeBoard.orderedSkews, 
-			edgeBoard.tAnnualized, 
-			edgeBoard.baseIv, 
-			tTarget, 
-			baseIv, 
-			spot
+      newStrike,
+      edgeBoard.orderedStrikePrices,
+      edgeBoard.orderedSkews,
+      edgeBoard.tAnnualized,
+      edgeBoard.baseIv,
+      tTarget,
+      baseIv,
+      spot
     );
   }
 
@@ -178,9 +178,9 @@ library VolGenerator {
     uint leftVariance = getVariance(leftBaseIv, leftSkew).multiplyDecimal(leftT);
     uint rightVariance = getVariance(rightBaseIv, rightSkew).multiplyDecimal(rightT);
 
-		// console2.log("leftVariance", leftVariance);
-		// console2.log("rightVariance", rightVariance);
-		// console2.log("ratio", ratio);
+    // console2.log("leftVariance", leftVariance);
+    // console2.log("rightVariance", rightVariance);
+    // console2.log("ratio", ratio);
 
     // interpolate
     uint vol = sqrtWeightedAvg(ratio, leftVariance, rightVariance, tTarget);
@@ -202,7 +202,7 @@ library VolGenerator {
     uint newStrike,
     uint[] memory orderedEdgeBoardStrikes,
     uint[] memory orderedEdgeBoardSkews,
-		uint edgeBoardBaseIv,
+    uint edgeBoardBaseIv,
     uint edgeBoardT,
     uint tTarget,
     uint baseIv,
@@ -212,7 +212,7 @@ library VolGenerator {
     int moneyness = strikeToMoneyness(newStrike, spot, tTarget);
     uint strikeOnEdgeBoard = moneynessToStrike(moneyness, spot, edgeBoardT);
 
-		uint skewWithEdgeBaseIv = getSkewForLiveBoard(
+    uint skewWithEdgeBaseIv = getSkewForLiveBoard(
       strikeOnEdgeBoard,
       Board({
         orderedStrikePrices: orderedEdgeBoardStrikes,
@@ -222,7 +222,7 @@ library VolGenerator {
       })
     );
 
-    return skewWithEdgeBaseIv.multiplyDecimal(edgeBoardBaseIv).divideDecimal(baseIv); 
+    return skewWithEdgeBaseIv.multiplyDecimal(edgeBoardBaseIv).divideDecimal(baseIv);
   }
 
   //////////////////
@@ -285,8 +285,7 @@ library VolGenerator {
    */
   function strikeToMoneyness(uint strike, uint spot, uint tAnnualized) public pure returns (int moneyness) {
     unchecked {
-      moneyness =
-        int(strike.divideDecimal(spot)).ln().divideDecimal(int(Math.sqrt(tAnnualized * DecimalMath.UNIT)));
+      moneyness = int(strike.divideDecimal(spot)).ln().divideDecimal(int(Math.sqrt(tAnnualized * DecimalMath.UNIT)));
     }
   }
 
@@ -299,8 +298,7 @@ library VolGenerator {
    */
   function moneynessToStrike(int moneyness, uint spot, uint tAnnualized) public pure returns (uint strike) {
     unchecked {
-      strike =
-        moneyness.multiplyDecimal(int(Math.sqrt(tAnnualized * DecimalMath.UNIT))).exp().multiplyDecimal(spot);
+      strike = moneyness.multiplyDecimal(int(Math.sqrt(tAnnualized * DecimalMath.UNIT))).exp().multiplyDecimal(spot);
     }
   }
 
