@@ -92,7 +92,7 @@ contract VolGeneratorWithinBoardTest is Test {
     skews[0] = 1.1e18;
     skews[1] = 1.2e18;
     skews[2] = 1.02e18;
-    skews[3] = 0.96e18;
+    skews[3] = 0.95e18;
     skews[4] = 1.33e18;
 
     return VolGenerator.Board({

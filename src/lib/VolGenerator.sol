@@ -97,7 +97,14 @@ library VolGenerator {
     Board memory edgeBoard
   ) public view returns (uint newSkew) {
     return _extrapolateSkewAcrossBoards(
-      newStrike, edgeBoard.orderedStrikePrices, edgeBoard.orderedSkews, edgeBoard.tAnnualized, tTarget, baseIv, spot
+      newStrike, 
+			edgeBoard.orderedStrikePrices, 
+			edgeBoard.orderedSkews, 
+			edgeBoard.tAnnualized, 
+			edgeBoard.baseIv, 
+			tTarget, 
+			baseIv, 
+			spot
     );
   }
 
@@ -191,6 +198,7 @@ library VolGenerator {
     uint newStrike,
     uint[] memory orderedEdgeBoardStrikes,
     uint[] memory orderedEdgeBoardSkews,
+		uint edgeBoardBaseIv,
     uint edgeBoardT,
     uint tTarget,
     uint baseIv,
@@ -200,15 +208,17 @@ library VolGenerator {
     int moneyness = strikeToMoneyness(newStrike, spot, tTarget);
     uint strikeOnEdgeBoard = moneynessToStrike(moneyness, spot, edgeBoardT);
 
-    return getSkewForLiveBoard(
+		uint skewWithEdgeBaseIv = getSkewForLiveBoard(
       strikeOnEdgeBoard,
       Board({
         orderedStrikePrices: orderedEdgeBoardStrikes,
         orderedSkews: orderedEdgeBoardSkews,
-        baseIv: baseIv, // todo [Josh]: is this the same baseIv for edge board and for new?
+        baseIv: edgeBoardBaseIv, // todo [Josh]: is this the same baseIv for edge board and for new?
         tAnnualized: tTarget
       })
     );
+
+    return skewWithEdgeBaseIv.multiplyDecimal(edgeBoardBaseIv).divideDecimal(baseIv); 
   }
 
   //////////////////
@@ -250,8 +260,9 @@ library VolGenerator {
     // interpolate
     uint ratio = SafeCast.toUint256((lnRStrike - lnMStrike).divideDecimal(lnRStrike - lnLStrike));
 
-		console2.log("left weight", varianceLeft);
-		console2.log("right weight", varianceRight);
+		// console2.log("left weight", varianceLeft);
+		// console2.log("right weight", varianceRight);
+		// console2.log("ratio", ratio);
 
     uint vol = sqrtWeightedAvg(ratio, varianceLeft, varianceRight, 1e18);
     return vol.divideDecimal(baseIv);
