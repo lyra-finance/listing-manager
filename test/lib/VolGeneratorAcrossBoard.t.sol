@@ -59,6 +59,68 @@ contract VolGeneratorAcrossBoardTest is Test {
     // strike $1375
     uint newSkew = tester.getSkewForNewBoard(1375e18, tTarget, baseIv, shortDatedBoard, longDatedBoard);
     assertApproxEqAbs(newSkew, 1.385018203566507e18, 1e10);
+
+    // strike $1425
+    newSkew = tester.getSkewForNewBoard(1425e18, tTarget, baseIv, shortDatedBoard, longDatedBoard);
+    assertApproxEqAbs(newSkew, 1.2679722287420703e18, 1e10);
+
+    // strike $1531.02
+    newSkew = tester.getSkewForNewBoard(1531.02e18, tTarget, baseIv, shortDatedBoard, longDatedBoard);
+    assertApproxEqAbs(newSkew, 1e18, 1e10);
+
+    // strike $1610
+    newSkew = tester.getSkewForNewBoard(1610e18, tTarget, baseIv, shortDatedBoard, longDatedBoard);
+    assertApproxEqAbs(newSkew, 0.8374157187348561e18, 1e10);
+
+    // strike $1700
+    newSkew = tester.getSkewForNewBoard(1700e18, tTarget, baseIv, shortDatedBoard, longDatedBoard);
+    assertApproxEqAbs(newSkew, 1.4404005130335995e18, 1e10);
+
+  }
+
+  // todo: finish 
+  function testExtrapolateloseToExisting() public {
+    // // todo: finish 
+    // tAnnualized: 22/365,
+    // strikes: [1310, 1455.05, 1511.10, 1600, 1774],
+
+    // // result:
+    // "baseIv":0.5875674529166249
+    // "strikePrice":1310,"skew":1.4495897796173352
+    // "strikePrice":1455.05,"skew":1.1251625411995716
+    // "strikePrice":1511.1,"skew":1
+    // "strikePrice":1600,"skew":0.6847582635927397
+    // "strikePrice":1774,"skew":1.3479303458157745
+  }
+
+  function testExtrapolateLargeExpiryFarFromExisting() public {
+    // tAnnualized: 90/365,
+    // strikes: [1200, 1300, 1400, 1500, 1600, 1700, 1800]
+    
+    // // result:
+    // "baseIv":0.6096737568875953
+    // "strikePrice":1200,"skew":1.325017547816124
+    // "strikePrice":1300,"skew":1.1958898974527652
+    // "strikePrice":1400,"skew":1.098102145935824
+    // "strikePrice":1500,"skew":1
+    // "strikePrice":1600,"skew":0.853310835906558
+    // "strikePrice":1700,"skew":0.6851962656535058
+    // "strikePrice":1800,"skew":0.9411536105973298
+  }
+
+  function testExtrapolateSmallExpiryFarFromExisting() public {
+    // tAnnualized: 1/365,
+    // strikes: [1200, 1300, 1400, 1500, 1600, 1700, 1800]
+
+    // // result:
+    // "baseIv":0.5734396267905288
+    // "strikePrice":1200,"skew":1.0876471922437108
+    // "strikePrice":1300,"skew":1.0876471922437108
+    // "strikePrice":1400,"skew":1.0876471922437108
+    // "strikePrice":1500,"skew":1
+    // "strikePrice":1600,"skew":1.315064332440123
+    // "strikePrice":1700,"skew":1.315064332440123
+    // "strikePrice":1800,"skew":1.315064332440123
   }
 
   /////////////

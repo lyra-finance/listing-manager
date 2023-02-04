@@ -167,7 +167,7 @@ library VolGenerator {
     uint rightT,
     uint tTarget,
     uint baseIv
-  ) internal pure returns (uint newSkew) {
+  ) internal view returns (uint newSkew) {
     if (!(leftT < tTarget && tTarget < rightT)) {
       revert VG_ImproperExpiryOrderDuringInterpolation(leftT, tTarget, rightT);
     }
@@ -177,6 +177,10 @@ library VolGenerator {
     // convert to variance
     uint leftVariance = getVariance(leftBaseIv, leftSkew).multiplyDecimal(leftT);
     uint rightVariance = getVariance(rightBaseIv, rightSkew).multiplyDecimal(rightT);
+
+		// console2.log("leftVariance", leftVariance);
+		// console2.log("rightVariance", rightVariance);
+		// console2.log("ratio", ratio);
 
     // interpolate
     uint vol = sqrtWeightedAvg(ratio, leftVariance, rightVariance, tTarget);
@@ -259,10 +263,6 @@ library VolGenerator {
 
     // interpolate
     uint ratio = SafeCast.toUint256((lnRStrike - lnMStrike).divideDecimal(lnRStrike - lnLStrike));
-
-		// console2.log("left weight", varianceLeft);
-		// console2.log("right weight", varianceRight);
-		// console2.log("ratio", ratio);
 
     uint vol = sqrtWeightedAvg(ratio, varianceLeft, varianceRight, 1e18);
     return vol.divideDecimal(baseIv);
