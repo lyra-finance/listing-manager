@@ -2,12 +2,12 @@
 pragma solidity 0.8.16;
 
 import "openzeppelin/utils/math/SafeCast.sol";
+import "openzeppelin/utils/math/Math.sol";
 import "newport/synthetix/DecimalMath.sol";
+import "newport/synthetix/SignedDecimalMath.sol";
 
 // todo: maybe use the new Black76 and FixedPointMathLib and get those audited
 import "newport/libraries/FixedPointMathLib.sol";
-import "newport/libraries/BlackScholes.sol";
-import "newport/libraries/Math.sol";
 import "lyra-utils/arrays/MemoryBinarySearch.sol";
 
 /**
@@ -51,19 +51,20 @@ library VolGenerator {
    * @param longDatedBoard Board details of the board with a longer time to expiry.
    * @return newSkew Estimated skew of the new strike
    */
-  function getSkewForNewBoard( // vs getNewSkewForNewBoard
-  uint newStrike, uint tTarget, uint baseIv, Board memory shortDatedBoard, Board memory longDatedBoard)
-    public
-    pure
-    returns (uint newSkew)
-  {
+  function getSkewForNewBoard(
+    uint newStrike,
+    uint tTarget,
+    uint baseIv,
+    Board memory shortDatedBoard,
+    Board memory longDatedBoard
+  ) public pure returns (uint newSkew) {
     // get matching skews of adjacent boards
     uint shortDatedSkew = getSkewForLiveBoard(newStrike, shortDatedBoard);
 
     uint longDatedSkew = getSkewForLiveBoard(newStrike, longDatedBoard);
 
     // interpolate skews
-    return interpolateSkewAcrossBoards(
+    return _interpolateSkewAcrossBoards(
       shortDatedSkew,
       longDatedSkew,
       shortDatedBoard.baseIv,
@@ -86,13 +87,22 @@ library VolGenerator {
    * @param edgeBoard Board details of the board with a shorter or longer time to expiry
    * @return newSkew Estimated skew of the new strike
    */
-  function getSkewForNewBoard(uint newStrike, uint tTarget, uint baseIv, uint spot, Board memory edgeBoard)
-    public
-    pure
-    returns (uint newSkew)
-  {
-    return extrapolateSkewAcrossBoards(
-      newStrike, edgeBoard.orderedStrikePrices, edgeBoard.orderedSkews, edgeBoard.tAnnualized, tTarget, baseIv, spot
+  function getSkewForNewBoard(
+    uint newStrike,
+    uint tTarget,
+    uint baseIv,
+    uint spot,
+    Board memory edgeBoard
+  ) public pure returns (uint newSkew) {
+    return _extrapolateSkewAcrossBoards(
+      newStrike,
+      edgeBoard.orderedStrikePrices,
+      edgeBoard.orderedSkews,
+      edgeBoard.tAnnualized,
+      edgeBoard.baseIv,
+      tTarget,
+      baseIv,
+      spot
     );
   }
 
@@ -114,7 +124,7 @@ library VolGenerator {
 
     // early return if found exact match
     uint idx = strikePrices.findUpperBound(newStrike);
-    if (strikePrices[idx] == newStrike) {
+    if (idx != numLiveStrikes && strikePrices[idx] == newStrike) {
       return skews[idx];
     }
 
@@ -124,7 +134,7 @@ library VolGenerator {
     } else if (idx == numLiveStrikes) {
       return skews[numLiveStrikes - 1];
     } else {
-      return interpolateSkewWithinBoard(
+      return _interpolateSkewWithinBoard(
         newStrike, strikePrices[idx - 1], strikePrices[idx], skews[idx - 1], skews[idx], liveBoard.baseIv
       );
     }
@@ -146,7 +156,7 @@ library VolGenerator {
    * @param baseIv BaseIv of the board with the new strike
    * @return newSkew New strike's skew.
    */
-  function interpolateSkewAcrossBoards(
+  function _interpolateSkewAcrossBoards(
     uint leftSkew,
     uint rightSkew,
     uint leftBaseIv,
@@ -155,7 +165,7 @@ library VolGenerator {
     uint rightT,
     uint tTarget,
     uint baseIv
-  ) public pure returns (uint newSkew) {
+  ) internal pure returns (uint newSkew) {
     if (!(leftT < tTarget && tTarget < rightT)) {
       revert VG_ImproperExpiryOrderDuringInterpolation(leftT, tTarget, rightT);
     }
@@ -176,17 +186,21 @@ library VolGenerator {
    *			   Assumes: sigma(z(T1), T1) == sigma(z(T2), T2)
    *				 i.e. "2mo 80-delta option" has same vol as "3mo 80-delta option".
    * @param newStrike The "live" volatility slice in the form of ExpiryData.
-   * @param edgeBoardT The index of expiryArray's edge, i.e. 0 or expiryArray.length - 1
+   * @param orderedEdgeBoardStrikes Ordered list of strikes of the live board closest to the new board.
+   * @param orderedEdgeBoardSkews Skews of the live board in the same order as the strikes.
+   * @param edgeBoardT The index of expiryArray's edge, i.e. 0 or expiryArray.length - 1.
+   * @param edgeBoardBaseIv Base volatility of the live board.
    * @param tTarget The annualized time-to-expiry of the new surface user wants to generate.
-   * @param spot Current chainlink spot price.
    * @param baseIv Value for ATM skew to anchor towards, e.g. 1e18 will ensure ATM skew is set to 1.0.
+   * @param spot Current chainlink spot price.
    * @return newSkew Array of skews for each strike in strikeTargets.
    */
-  function extrapolateSkewAcrossBoards(
+  function _extrapolateSkewAcrossBoards(
     uint newStrike,
     uint[] memory orderedEdgeBoardStrikes,
     uint[] memory orderedEdgeBoardSkews,
     uint edgeBoardT,
+    uint edgeBoardBaseIv,
     uint tTarget,
     uint baseIv,
     uint spot
@@ -195,15 +209,19 @@ library VolGenerator {
     int moneyness = strikeToMoneyness(newStrike, spot, tTarget);
     uint strikeOnEdgeBoard = moneynessToStrike(moneyness, spot, edgeBoardT);
 
-    return getSkewForLiveBoard(
+    // get skew on the existing board
+    uint skewWithEdgeBaseIv = getSkewForLiveBoard(
       strikeOnEdgeBoard,
       Board({
         orderedStrikePrices: orderedEdgeBoardStrikes,
         orderedSkews: orderedEdgeBoardSkews,
-        baseIv: baseIv, // todo [Josh]: is this the same baseIv for edge board and for new?
-        tAnnualized: tTarget
+        baseIv: edgeBoardBaseIv,
+        tAnnualized: edgeBoardT
       })
     );
+
+    // convert skew to new board given a different baseIv
+    return skewWithEdgeBaseIv.multiplyDecimal(edgeBoardBaseIv).divideDecimal(baseIv);
   }
 
   //////////////////
@@ -220,14 +238,14 @@ library VolGenerator {
    * @param baseIv The base volatility of the board
    * @return newSkew New strike's skew.
    */
-  function interpolateSkewWithinBoard(
+  function _interpolateSkewWithinBoard(
     uint newStrike,
     uint leftStrike,
     uint rightStrike,
     uint leftSkew,
     uint rightSkew,
     uint baseIv
-  ) public pure returns (uint newSkew) {
+  ) internal pure returns (uint newSkew) {
     // ensure mid strike is actually in the middle
     if (!(leftStrike < newStrike && newStrike < rightStrike)) {
       revert VG_ImproperStrikeOrderDuringInterpolation(leftStrike, newStrike, rightStrike);
@@ -266,8 +284,7 @@ library VolGenerator {
    */
   function strikeToMoneyness(uint strike, uint spot, uint tAnnualized) public pure returns (int moneyness) {
     unchecked {
-      moneyness =
-        int(strike.divideDecimal(spot)).ln().divideDecimal(int(BlackScholes._sqrt(tAnnualized * DecimalMath.UNIT)));
+      moneyness = int(strike.divideDecimal(spot)).ln().divideDecimal(int(Math.sqrt(tAnnualized * DecimalMath.UNIT)));
     }
   }
 
@@ -280,8 +297,7 @@ library VolGenerator {
    */
   function moneynessToStrike(int moneyness, uint spot, uint tAnnualized) public pure returns (uint strike) {
     unchecked {
-      strike =
-        moneyness.multiplyDecimal(int(BlackScholes._sqrt(tAnnualized * DecimalMath.UNIT))).exp().multiplyDecimal(spot);
+      strike = moneyness.multiplyDecimal(int(Math.sqrt(tAnnualized * DecimalMath.UNIT))).exp().multiplyDecimal(spot);
     }
   }
 
@@ -297,14 +313,15 @@ library VolGenerator {
     return variance.multiplyDecimal(variance);
   }
 
-  function sqrtWeightedAvg(uint leftVal, uint leftWeight, uint rightWeight, uint denominator)
-    public
-    pure
-    returns (uint)
-  {
+  function sqrtWeightedAvg(
+    uint leftVal,
+    uint leftWeight,
+    uint rightWeight,
+    uint denominator
+  ) public pure returns (uint) {
     uint weightedAvg = leftVal.multiplyDecimal(leftWeight) + (DecimalMath.UNIT - leftVal).multiplyDecimal(rightWeight);
 
-    return BlackScholes._sqrt(weightedAvg.divideDecimal(denominator) * DecimalMath.UNIT);
+    return Math.sqrt(weightedAvg.divideDecimal(denominator) * DecimalMath.UNIT);
   }
 
   ////////////

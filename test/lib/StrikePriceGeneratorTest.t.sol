@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import "forge-std/Test.sol";
 import "forge-std/StdJson.sol";
 
-import "../src/lib/StrikePriceGenerator.sol";
+import "src/lib/StrikePriceGenerator.sol";
 
 contract StrikePriceTester {
   // todo [Josh]: can probably hardcode
@@ -30,15 +30,15 @@ contract StrikePriceTester {
     return StrikePriceGenerator.getLeftNearestPivot(pivots, spot);
   }
 
-  function getStep(uint nearestPivot, uint tTarget) public view returns (uint) {
+  function getStep(uint nearestPivot, uint tTarget) public pure returns (uint) {
     return StrikePriceGenerator.getStep(nearestPivot, tTarget);
   }
 
-  function getATMStrike(uint spot, uint nearestPivot, uint step) public view returns (uint) {
+  function getATMStrike(uint spot, uint nearestPivot, uint step) public pure returns (uint) {
     return StrikePriceGenerator.getATMStrike(spot, nearestPivot, step);
   }
 
-  function getStrikeRange(uint tTarget, uint spot, uint maxScaledMoneyness) public view returns (uint, uint) {
+  function getStrikeRange(uint tTarget, uint spot, uint maxScaledMoneyness) public pure returns (uint, uint) {
     return StrikePriceGenerator.getStrikeRange(tTarget, spot, maxScaledMoneyness);
   }
 }
@@ -240,7 +240,7 @@ contract StrikePriceGeneratorTest is Test {
   // Helpers //
   /////////////
 
-  function _secToAnnualized(uint sec) internal pure returns (uint) {
+  function _secToAnnualized(uint sec) public pure returns (uint) {
     return (sec * 1e18) / uint(365 days);
   }
 }
