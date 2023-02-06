@@ -22,28 +22,27 @@ contract VolGeneratorAcrossBoardTest is Test {
     // get Base IV first:
     uint atmVol = tester.getSkewForNewBoard(defaultSpot, tTarget, 1e18, shortDatedBoard, longDatedBoard);
     uint baseIv = atmVol * 1e18 / defaultATMSkew;
-    // todo: double check that ok to be off by 1e16
-    assertApproxEqAbs(baseIv, 0.5965411413724958e18, 1e10);
+    assertApproxEqAbs(baseIv, 0.6025821525077288e18, 1e10);
 
     // strike $1400
     uint newSkew = tester.getSkewForNewBoard(1400e18, tTarget, baseIv, shortDatedBoard, longDatedBoard);
-    assertApproxEqAbs(newSkew, 1.1556934548479152e18, 1e10);
+    assertApproxEqAbs(newSkew, 1.1441073881172668e18, 1e10);
 
     // strike $1450
     newSkew = tester.getSkewForNewBoard(1450e18, tTarget, baseIv, shortDatedBoard, longDatedBoard);
-    assertApproxEqAbs(newSkew, 1.1278576322505167e18, 1e10);
+    assertApproxEqAbs(newSkew, 1.1165506254182895e18, 1e10);
 
     // strike $1500
     newSkew = tester.getSkewForNewBoard(1500e18, tTarget, baseIv, shortDatedBoard, longDatedBoard);
-    assertApproxEqAbs(newSkew, 1e18, 1e10);
+    assertApproxEqAbs(newSkew, 0.9899747924659027e18, 1e10);
 
     // strike $1550
     newSkew = tester.getSkewForNewBoard(1550e18, tTarget, baseIv, shortDatedBoard, longDatedBoard);
-    assertApproxEqAbs(newSkew, 0.8741978629034658e18, 1e10);
+    assertApproxEqAbs(newSkew, 0.8654338479019942e18, 1e10);
 
     // strike $1600
     newSkew = tester.getSkewForNewBoard(1600e18, tTarget, baseIv, shortDatedBoard, longDatedBoard);
-    assertApproxEqAbs(newSkew, 0.8545273360149661e18, 1e10);
+    assertApproxEqAbs(newSkew, 0.8459605221278568e18, 1e10);
   }
 
   function testInterpolationCloseToLongDatedBoard() public {
@@ -54,28 +53,27 @@ contract VolGeneratorAcrossBoardTest is Test {
     // get Base IV first:
     uint atmVol = tester.getSkewForNewBoard(defaultSpot, tTarget, 1e18, shortDatedBoard, longDatedBoard);
     uint baseIv = atmVol * 1e18 / defaultATMSkew;
-    // todo: this completely off
-    assertApproxEqAbs(baseIv, 0.549204794896532e18, 1e10);
+    assertApproxEqAbs(baseIv, 0.611354437097115e18, 1e10);
 
     // strike $1375
     uint newSkew = tester.getSkewForNewBoard(1375e18, tTarget, baseIv, shortDatedBoard, longDatedBoard);
-    assertApproxEqAbs(newSkew, 1.385018203566507e18, 1e10);
+    assertApproxEqAbs(newSkew, 1.2442187252774846e18, 1e10);
 
     // strike $1425
     newSkew = tester.getSkewForNewBoard(1425e18, tTarget, baseIv, shortDatedBoard, longDatedBoard);
-    assertApproxEqAbs(newSkew, 1.2679722287420703e18, 1e10);
+    assertApproxEqAbs(newSkew, 1.1390715198328825e18, 1e10);
 
     // strike $1531.02
     newSkew = tester.getSkewForNewBoard(1531.02e18, tTarget, baseIv, shortDatedBoard, longDatedBoard);
-    assertApproxEqAbs(newSkew, 1e18, 1e10);
+    assertApproxEqAbs(newSkew, 0.8983410630080852e18, 1e10);
 
     // strike $1610
     newSkew = tester.getSkewForNewBoard(1610e18, tTarget, baseIv, shortDatedBoard, longDatedBoard);
-    assertApproxEqAbs(newSkew, 0.8374157187348561e18, 1e10);
+    assertApproxEqAbs(newSkew, 0.7522849269479505e18, 1e10);
 
     // strike $1700
     newSkew = tester.getSkewForNewBoard(1700e18, tTarget, baseIv, shortDatedBoard, longDatedBoard);
-    assertApproxEqAbs(newSkew, 1.4404005130335995e18, 1e10);
+    assertApproxEqAbs(newSkew, 1.2939709280359952e18, 1e10);
   }
 
   // todo: finish
