@@ -88,7 +88,6 @@ contract VolGeneratorAcrossBoardTest is Test {
     uint baseIv = atmVol * 1e18 / defaultATMSkew;
     assertApproxEqAbs(baseIv, 0.6119762171997786e18, 1e10);
 
-
     // strike $1310
     uint newSkew = tester.getSkewForNewBoard(1310e18, tTarget, baseIv, defaultSpot, edgeBoard);
     assertApproxEqAbs(newSkew, 1.3917726712992229e18, 1e10);
@@ -151,7 +150,7 @@ contract VolGeneratorAcrossBoardTest is Test {
   }
 
   function testExtrapolateSmallExpiryFarFromExisting_TODO() public {
-     // Chose 7 day expiry as it's on the edge closest to 7 days
+    // Chose 7 day expiry as it's on the edge closest to 7 days
     // note: in integration contracts, this would be done algorithmically
     VolGenerator.Board memory edgeBoard = getLiveBoardA();
     uint tTarget = _secToAnnualized(1 days);

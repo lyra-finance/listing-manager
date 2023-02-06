@@ -186,8 +186,8 @@ library VolGenerator {
    *			   Assumes: sigma(z(T1), T1) == sigma(z(T2), T2)
    *				 i.e. "2mo 80-delta option" has same vol as "3mo 80-delta option".
    * @param newStrike The "live" volatility slice in the form of ExpiryData.
-	 * @param orderedEdgeBoardStrikes Ordered list of strikes of the live board closest to the new board.
-	 * @param orderedEdgeBoardSkews Skews of the live board in the same order as the strikes.
+   * @param orderedEdgeBoardStrikes Ordered list of strikes of the live board closest to the new board.
+   * @param orderedEdgeBoardSkews Skews of the live board in the same order as the strikes.
    * @param edgeBoardT The index of expiryArray's edge, i.e. 0 or expiryArray.length - 1.
    * @param edgeBoardBaseIv Base volatility of the live board.
    * @param tTarget The annualized time-to-expiry of the new surface user wants to generate.
@@ -200,7 +200,7 @@ library VolGenerator {
     uint[] memory orderedEdgeBoardStrikes,
     uint[] memory orderedEdgeBoardSkews,
     uint edgeBoardT,
-		uint edgeBoardBaseIv,
+    uint edgeBoardBaseIv,
     uint tTarget,
     uint baseIv,
     uint spot
@@ -209,7 +209,7 @@ library VolGenerator {
     int moneyness = strikeToMoneyness(newStrike, spot, tTarget);
     uint strikeOnEdgeBoard = moneynessToStrike(moneyness, spot, edgeBoardT);
 
-		// get skew on the existing board
+    // get skew on the existing board
     uint skewWithEdgeBaseIv = getSkewForLiveBoard(
       strikeOnEdgeBoard,
       Board({
@@ -220,7 +220,7 @@ library VolGenerator {
       })
     );
 
-		// convert skew to new board given a different baseIv
+    // convert skew to new board given a different baseIv
     return skewWithEdgeBaseIv.multiplyDecimal(edgeBoardBaseIv).divideDecimal(baseIv);
   }
 
