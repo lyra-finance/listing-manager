@@ -4,3 +4,9 @@
 [submodule "lib/lyra-protocol"]
 	path = lib/lyra-protocol
 	url = https://github.com/lyra-finance/lyra-protocol
+[submodule "lib/openzeppelin-contracts"]
+	path = lib/openzeppelin-contracts
+	url = https://github.com/OpenZeppelin/openzeppelin-contracts
+[submodule "lib/lyra-utils"]
+	path = lib/lyra-utils
+	url = git@github.com:lyra-finance/lyra-utils.git

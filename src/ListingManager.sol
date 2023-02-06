@@ -52,11 +52,9 @@ contract ListingManager {
     registry = _registry;
   }
 
-
   ///////////////////////////////////////
   // Queues / Time lock / Risk Council //
   ///////////////////////////////////////
-
 
   // boardId => strikes
   // should block new strikes being added to the board if anything exists here
@@ -67,27 +65,25 @@ contract ListingManager {
 
   address riskCouncil;
 
-
-  function setRiskCouncil(address _riskCouncil) onlyOwner {}
+  function setRiskCouncil(address _riskCouncil) external onlyOwner {}
 
   // TODO: any param setting? I think it can all be hardcoded and contract replaced if that's the desire.
 
-  function vetoStrikeUpdate(uint boardId) onlyRiskCouncil {
+  function vetoStrikeUpdate(uint boardId) external onlyRiskCouncil {
     // remove the QueuedStrikes for given boardId
   }
 
-  function vetoQueuedBoard(uint expiry) onlyRiskCouncil {
+  function vetoQueuedBoard(uint expiry) external onlyRiskCouncil {
     // remove the QueuedBoard for given expiry
   }
 
-  function fastForwardStrikeUpdate(uint boardId) onlyRiskCouncil {}
+  function fastForwardStrikeUpdate(uint boardId) external onlyRiskCouncil {}
 
-  function fastForwardQueuedBoard(uint boardId) onlyRiskCouncil {}
-
+  function fastForwardQueuedBoard(uint boardId) external onlyRiskCouncil {}
 
   modifier onlyRiskCouncil() {
     if (msg.sender != riskCouncil) {
-      revert "only riskCouncil";
+      revert("only riskCouncil");
     }
     _;
   }
@@ -96,7 +92,6 @@ contract ListingManager {
     // TODO: inherit owned and delet this
     _;
   }
-
 
   ///////////////////////
   // Queue new strikes //
@@ -115,16 +110,6 @@ contract ListingManager {
     // a process for adding weekly expiries up to 10-12 weeks
   }
 
-
-
-
-
-
-
-
-
-
-
   /////////////////////////
   /////////////////////////
   ////                 ////
@@ -132,7 +117,6 @@ contract ListingManager {
   ////                 ////
   /////////////////////////
   /////////////////////////
-
 
   function getStrikesToAdd(address market, uint boardId) external view returns (uint[] memory) {
     IBaseExchangeAdapter exchangeAdapter = IBaseExchangeAdapter(registry.getGlobalAddress(bytes32("EXCHANGE_ADAPTER")));
