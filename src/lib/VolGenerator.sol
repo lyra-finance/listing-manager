@@ -178,10 +178,6 @@ library VolGenerator {
     uint leftVariance = getVariance(leftBaseIv, leftSkew).multiplyDecimal(leftT);
     uint rightVariance = getVariance(rightBaseIv, rightSkew).multiplyDecimal(rightT);
 
-    // console2.log("leftVariance", leftVariance);
-    // console2.log("rightVariance", rightVariance);
-    // console2.log("ratio", ratio);
-
     // interpolate
     uint vol = sqrtWeightedAvg(ratio, leftVariance, rightVariance, tTarget);
     return vol.divideDecimal(baseIv);
@@ -202,8 +198,8 @@ library VolGenerator {
     uint newStrike,
     uint[] memory orderedEdgeBoardStrikes,
     uint[] memory orderedEdgeBoardSkews,
-    uint edgeBoardBaseIv,
     uint edgeBoardT,
+		uint edgeBoardBaseIv,
     uint tTarget,
     uint baseIv,
     uint spot
@@ -218,10 +214,11 @@ library VolGenerator {
         orderedStrikePrices: orderedEdgeBoardStrikes,
         orderedSkews: orderedEdgeBoardSkews,
         baseIv: edgeBoardBaseIv, // todo [Josh]: is this the same baseIv for edge board and for new?
-        tAnnualized: tTarget
+        tAnnualized: edgeBoardT
       })
     );
 
+		console2.log(skewWithEdgeBaseIv);
     return skewWithEdgeBaseIv.multiplyDecimal(edgeBoardBaseIv).divideDecimal(baseIv);
   }
 

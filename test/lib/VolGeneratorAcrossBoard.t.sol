@@ -78,9 +78,18 @@ contract VolGeneratorAcrossBoardTest is Test {
 
   // todo: finish
   function testExtrapolateloseToExisting_TODO() public {
-    // // todo: finish
-    // tAnnualized: 22/365,
     // strikes: [1310, 1455.05, 1511.10, 1600, 1774],
+
+    // Chose 21 day expiry as it's on the edge closest to 22 days
+    // note: in integration contracts, this would be done algorithmically
+    VolGenerator.Board memory edgeBoard = getLiveBoardB();
+    uint tTarget = _secToAnnualized(22 days);
+
+    // get Base IV first:
+    uint atmVol = tester.getSkewForNewBoard(defaultSpot, tTarget, 1e18, defaultSpot, edgeBoard);
+    uint baseIv = atmVol * 1e18 / defaultATMSkew;
+    assertApproxEqAbs(baseIv, 0.6119762171997786e18, 1e10);
+
 
     // // result:
     // "baseIv":0.5875674529166249
