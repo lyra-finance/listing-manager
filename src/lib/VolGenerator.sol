@@ -2,20 +2,20 @@
 pragma solidity 0.8.16;
 
 import "openzeppelin/utils/math/SafeCast.sol";
+import "openzeppelin/utils/math/Math.sol";
 import "newport/synthetix/DecimalMath.sol";
+import "newport/synthetix/SignedDecimalMath.sol";
 
 // todo: maybe use the new Black76 and FixedPointMathLib and get those audited
 import "newport/libraries/FixedPointMathLib.sol";
-import "newport/libraries/BlackScholes.sol";
-import "newport/libraries/Math.sol";
 import "lyra-utils/arrays/MemoryBinarySearch.sol";
 
 /**
  * @title Automated vol generator
  * @author Lyra
  * @notice The library automatically generates baseIv and skews for
- * various input strikes. It uses other boards or existing strikes
- * to best approximate an initial baseIv or skew for each new strike.
+ *         various input strikes. It uses other boards or existing strikes
+ *         to best approximate an initial baseIv or skew for each new strike.
  */
 library VolGenerator {
   using DecimalMath for uint;
@@ -41,9 +41,9 @@ library VolGenerator {
 
   /**
    * @notice Returns the skew for a given strike
-   * when the new board has both an adjacent short and long dated boards.
-   * E.g. for a new strike: 3mo time to expiry, and liveBoards: [1d, 1mo, 6mo]
-   * The returned new strike volatility = baseIv * newSkew
+   *				 when the new board has both an adjacent short and long dated boards.
+   *				 E.g. for a new strike: 3mo time to expiry, and liveBoards: [1d, 1mo, 6mo]
+   *				 The returned new strike volatility = baseIv * newSkew
    * @param newStrike the strike price for which to find the skew
    * @param tTarget annualized time to expiry
    * @param baseIv base volatility for the given strike
@@ -51,7 +51,7 @@ library VolGenerator {
    * @param longDatedBoard Board details of the board with a longer time to expiry.
    * @return newSkew Estimated skew of the new strike
    */
-  function getSkewForNewBoard( // vs getNewSkewForNewBoard
+  function getSkewForNewBoard(
     uint newStrike,
     uint tTarget,
     uint baseIv,
@@ -64,7 +64,7 @@ library VolGenerator {
     uint longDatedSkew = getSkewForLiveBoard(newStrike, longDatedBoard);
 
     // interpolate skews
-    return interpolateSkewAcrossBoards(
+    return _interpolateSkewAcrossBoards(
       shortDatedSkew,
       longDatedSkew,
       shortDatedBoard.baseIv,
@@ -78,28 +78,37 @@ library VolGenerator {
 
   /**
    * @notice Returns the skew for a given strike
-   * when the new board does not have adjacent boards on both sides.
-   * E.g. for a new strike: 3mo time to expiry, but liveBoards: [1d, 1w, 1mo]
-   * The returned new strike volatility = baseIv * newSkew.
+   *				 when the new board does not have adjacent boards on both sides.
+   *				 E.g. for a new strike: 3mo time to expiry, but liveBoards: [1d, 1w, 1mo]
+   *				 The returned new strike volatility = baseIv * newSkew.
    * @param newStrike the strike price for which to find the skew
    * @param tTarget annualized time to expiry
    * @param baseIv base volatility for the given strike
    * @param edgeBoard Board details of the board with a shorter or longer time to expiry
    * @return newSkew Estimated skew of the new strike
    */
-  function getSkewForNewBoard(uint newStrike, uint tTarget, uint baseIv, uint spot, Board memory edgeBoard)
-    public
-    pure
-    returns (uint newSkew)
-  {
-    return extrapolateSkewAcrossBoards(
-      newStrike, edgeBoard.orderedStrikePrices, edgeBoard.orderedSkews, edgeBoard.tAnnualized, tTarget, baseIv, spot
+  function getSkewForNewBoard(
+    uint newStrike,
+    uint tTarget,
+    uint baseIv,
+    uint spot,
+    Board memory edgeBoard
+  ) public pure returns (uint newSkew) {
+    return _extrapolateSkewAcrossBoards(
+      newStrike,
+      edgeBoard.orderedStrikePrices,
+      edgeBoard.orderedSkews,
+      edgeBoard.tAnnualized,
+      edgeBoard.baseIv,
+      tTarget,
+      baseIv,
+      spot
     );
   }
 
   /**
    * @notice Returns the skew for a given strike that lies within an existing board.
-   * The returned new strike volatility = baseIv * newSkew.
+   *				 The returned new strike volatility = baseIv * newSkew.
    * @param newStrike the strike price for which to find the skew
    * @param liveBoard Board details of the live board
    * @return newSkew Estimated skew of the new strike
@@ -115,7 +124,7 @@ library VolGenerator {
 
     // early return if found exact match
     uint idx = strikePrices.findUpperBound(newStrike);
-    if (strikePrices[idx] == newStrike) {
+    if (idx != numLiveStrikes && strikePrices[idx] == newStrike) {
       return skews[idx];
     }
 
@@ -125,7 +134,7 @@ library VolGenerator {
     } else if (idx == numLiveStrikes) {
       return skews[numLiveStrikes - 1];
     } else {
-      return interpolateSkewWithinBoard(
+      return _interpolateSkewWithinBoard(
         newStrike, strikePrices[idx - 1], strikePrices[idx], skews[idx - 1], skews[idx], liveBoard.baseIv
       );
     }
@@ -147,7 +156,7 @@ library VolGenerator {
    * @param baseIv BaseIv of the board with the new strike
    * @return newSkew New strike's skew.
    */
-  function interpolateSkewAcrossBoards(
+  function _interpolateSkewAcrossBoards(
     uint leftSkew,
     uint rightSkew,
     uint leftBaseIv,
@@ -156,7 +165,7 @@ library VolGenerator {
     uint rightT,
     uint tTarget,
     uint baseIv
-  ) public pure returns (uint newSkew) {
+  ) internal pure returns (uint newSkew) {
     if (!(leftT < tTarget && tTarget < rightT)) {
       revert VG_ImproperExpiryOrderDuringInterpolation(leftT, tTarget, rightT);
     }
@@ -174,20 +183,24 @@ library VolGenerator {
 
   /**
    * @notice Extrapolates skew for a strike on a new board.
-   * Assumes: sigma(z(T1), T1) == sigma(z(T2), T2)
-   * i.e. "2mo 80-delta option" has same vol as "3mo 80-delta option".
+   *			   Assumes: sigma(z(T1), T1) == sigma(z(T2), T2)
+   *				 i.e. "2mo 80-delta option" has same vol as "3mo 80-delta option".
    * @param newStrike The "live" volatility slice in the form of ExpiryData.
-   * @param edgeBoardT The index of expiryArray's edge, i.e. 0 or expiryArray.length - 1
+   * @param orderedEdgeBoardStrikes Ordered list of strikes of the live board closest to the new board.
+   * @param orderedEdgeBoardSkews Skews of the live board in the same order as the strikes.
+   * @param edgeBoardT The index of expiryArray's edge, i.e. 0 or expiryArray.length - 1.
+   * @param edgeBoardBaseIv Base volatility of the live board.
    * @param tTarget The annualized time-to-expiry of the new surface user wants to generate.
-   * @param spot Current chainlink spot price.
    * @param baseIv Value for ATM skew to anchor towards, e.g. 1e18 will ensure ATM skew is set to 1.0.
+   * @param spot Current chainlink spot price.
    * @return newSkew Array of skews for each strike in strikeTargets.
    */
-  function extrapolateSkewAcrossBoards(
+  function _extrapolateSkewAcrossBoards(
     uint newStrike,
     uint[] memory orderedEdgeBoardStrikes,
     uint[] memory orderedEdgeBoardSkews,
     uint edgeBoardT,
+    uint edgeBoardBaseIv,
     uint tTarget,
     uint baseIv,
     uint spot
@@ -196,15 +209,19 @@ library VolGenerator {
     int moneyness = strikeToMoneyness(newStrike, spot, tTarget);
     uint strikeOnEdgeBoard = moneynessToStrike(moneyness, spot, edgeBoardT);
 
-    return getSkewForLiveBoard(
+    // get skew on the existing board
+    uint skewWithEdgeBaseIv = getSkewForLiveBoard(
       strikeOnEdgeBoard,
       Board({
         orderedStrikePrices: orderedEdgeBoardStrikes,
         orderedSkews: orderedEdgeBoardSkews,
-        baseIv: baseIv, // todo [Josh]: is this the same baseIv for edge board and for new?
-        tAnnualized: tTarget
+        baseIv: edgeBoardBaseIv,
+        tAnnualized: edgeBoardT
       })
     );
+
+    // convert skew to new board given a different baseIv
+    return skewWithEdgeBaseIv.multiplyDecimal(edgeBoardBaseIv).divideDecimal(baseIv);
   }
 
   //////////////////
@@ -221,14 +238,14 @@ library VolGenerator {
    * @param baseIv The base volatility of the board
    * @return newSkew New strike's skew.
    */
-  function interpolateSkewWithinBoard(
+  function _interpolateSkewWithinBoard(
     uint newStrike,
     uint leftStrike,
     uint rightStrike,
     uint leftSkew,
     uint rightSkew,
     uint baseIv
-  ) public pure returns (uint newSkew) {
+  ) internal pure returns (uint newSkew) {
     // ensure mid strike is actually in the middle
     if (!(leftStrike < newStrike && newStrike < rightStrike)) {
       revert VG_ImproperStrikeOrderDuringInterpolation(leftStrike, newStrike, rightStrike);
@@ -257,32 +274,30 @@ library VolGenerator {
   /**
    * @notice Converts a $ strike to standard moneyness.
    * @dev By "standard" moneyness we mean moneyness := ln(K/S) / sqrt(T).
-   * This value allows us to avoid delta calculations.
-   * Delta maps one-to-one to Black-Scholes d1, and this is a "simple" version of d1.
-   * So instead of using / computing / inverting delta, we can just find moneyness
-   * That maps to desired delta values, and use it instead.
+   *      This value allows us to avoid delta calculations.
+   *      Delta maps one-to-one to Black-Scholes d1, and this is a "simple" version of d1.
+   *      So instead of using / computing / inverting delta, we can just find moneyness
+   *      That maps to desired delta values, and use it instead.
    * @param strike dollar strike, 18 decimals
    * @param spot dollar Chainlink spot, 18 decimals
    * @param tAnnualized annualized time-to-expiry, 18 decimals
    */
   function strikeToMoneyness(uint strike, uint spot, uint tAnnualized) public pure returns (int moneyness) {
     unchecked {
-      moneyness =
-        int(strike.divideDecimal(spot)).ln().divideDecimal(int(BlackScholes._sqrt(tAnnualized * DecimalMath.UNIT)));
+      moneyness = int(strike.divideDecimal(spot)).ln().divideDecimal(int(Math.sqrt(tAnnualized * DecimalMath.UNIT)));
     }
   }
 
   /**
    * @notice Converts standard moneyness back to a $ strike.
-   * Inverse of `strikeToMoneyness()`.
+   * 				 Inverse of `strikeToMoneyness()`.
    * @param moneyness moneyness as defined in _strikeToMoneyness()
    * @param spot dollar Chainlink spot, 18 decimals
    * @param tAnnualized annualized time-to-expiry, 18 decimals
    */
   function moneynessToStrike(int moneyness, uint spot, uint tAnnualized) public pure returns (uint strike) {
     unchecked {
-      strike =
-        moneyness.multiplyDecimal(int(BlackScholes._sqrt(tAnnualized * DecimalMath.UNIT))).exp().multiplyDecimal(spot);
+      strike = moneyness.multiplyDecimal(int(Math.sqrt(tAnnualized * DecimalMath.UNIT))).exp().multiplyDecimal(spot);
     }
   }
 
@@ -298,14 +313,15 @@ library VolGenerator {
     return variance.multiplyDecimal(variance);
   }
 
-  function sqrtWeightedAvg(uint leftVal, uint leftWeight, uint rightWeight, uint denominator)
-    public
-    pure
-    returns (uint)
-  {
+  function sqrtWeightedAvg(
+    uint leftVal,
+    uint leftWeight,
+    uint rightWeight,
+    uint denominator
+  ) public pure returns (uint) {
     uint weightedAvg = leftVal.multiplyDecimal(leftWeight) + (DecimalMath.UNIT - leftVal).multiplyDecimal(rightWeight);
 
-    return BlackScholes._sqrt(weightedAvg.divideDecimal(denominator) * DecimalMath.UNIT);
+    return Math.sqrt(weightedAvg.divideDecimal(denominator) * DecimalMath.UNIT);
   }
 
   ////////////
