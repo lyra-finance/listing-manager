@@ -10,7 +10,7 @@ contract VolGeneratorTester {
     uint baseIv,
     VolGenerator.Board memory shortDatedBoard,
     VolGenerator.Board memory longDatedBoard
-  ) external view returns (uint newSkew) {
+  ) external pure returns (uint newSkew) {
     return VolGenerator.getSkewForNewBoard(newStrike, tTarget, baseIv, shortDatedBoard, longDatedBoard);
   }
 
@@ -20,14 +20,14 @@ contract VolGeneratorTester {
     uint baseIv,
     uint spot,
     VolGenerator.Board memory edgeBoard
-  ) external view returns (uint newSkew) {
+  ) external pure returns (uint newSkew) {
     return VolGenerator.getSkewForNewBoard(newStrike, tTarget, baseIv, spot, edgeBoard);
   }
 
   function getSkewForLiveBoard(
     uint newStrike,
     VolGenerator.Board memory liveBoard
-  ) external view returns (uint newSkew) {
+  ) external pure returns (uint newSkew) {
     return VolGenerator.getSkewForLiveBoard(newStrike, liveBoard);
   }
 }

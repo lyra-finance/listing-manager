@@ -10,8 +10,6 @@ import "newport/synthetix/SignedDecimalMath.sol";
 import "newport/libraries/FixedPointMathLib.sol";
 import "lyra-utils/arrays/MemoryBinarySearch.sol";
 
-import "forge-std/console2.sol";
-
 /**
  * @title Automated vol generator
  * @author Lyra
@@ -59,7 +57,7 @@ library VolGenerator {
     uint baseIv,
     Board memory shortDatedBoard,
     Board memory longDatedBoard
-  ) public view returns (uint newSkew) {
+  ) public pure returns (uint newSkew) {
     // get matching skews of adjacent boards
     uint shortDatedSkew = getSkewForLiveBoard(newStrike, shortDatedBoard);
 
@@ -95,7 +93,7 @@ library VolGenerator {
     uint baseIv,
     uint spot,
     Board memory edgeBoard
-  ) public view returns (uint newSkew) {
+  ) public pure returns (uint newSkew) {
     return _extrapolateSkewAcrossBoards(
       newStrike,
       edgeBoard.orderedStrikePrices,
@@ -115,7 +113,7 @@ library VolGenerator {
    * @param liveBoard Board details of the live board
    * @return newSkew Estimated skew of the new strike
    */
-  function getSkewForLiveBoard(uint newStrike, Board memory liveBoard) public view returns (uint newSkew) {
+  function getSkewForLiveBoard(uint newStrike, Board memory liveBoard) public pure returns (uint newSkew) {
     uint[] memory strikePrices = liveBoard.orderedStrikePrices;
     uint[] memory skews = liveBoard.orderedSkews;
 
@@ -167,7 +165,7 @@ library VolGenerator {
     uint rightT,
     uint tTarget,
     uint baseIv
-  ) internal view returns (uint newSkew) {
+  ) internal pure returns (uint newSkew) {
     if (!(leftT < tTarget && tTarget < rightT)) {
       revert VG_ImproperExpiryOrderDuringInterpolation(leftT, tTarget, rightT);
     }
@@ -206,7 +204,7 @@ library VolGenerator {
     uint tTarget,
     uint baseIv,
     uint spot
-  ) internal view returns (uint newSkew) {
+  ) internal pure returns (uint newSkew) {
     // map newStrike to a strike on the edge board with the same moneyness
     int moneyness = strikeToMoneyness(newStrike, spot, tTarget);
     uint strikeOnEdgeBoard = moneynessToStrike(moneyness, spot, edgeBoardT);
@@ -247,7 +245,7 @@ library VolGenerator {
     uint leftSkew,
     uint rightSkew,
     uint baseIv
-  ) internal view returns (uint newSkew) {
+  ) internal pure returns (uint newSkew) {
     // ensure mid strike is actually in the middle
     if (!(leftStrike < newStrike && newStrike < rightStrike)) {
       revert VG_ImproperStrikeOrderDuringInterpolation(leftStrike, newStrike, rightStrike);

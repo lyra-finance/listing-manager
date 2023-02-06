@@ -77,9 +77,7 @@ contract VolGeneratorAcrossBoardTest is Test {
   }
 
   // todo: finish
-  function testExtrapolateloseToExisting_TODO() public {
-    // strikes: [1310, 1455.05, 1511.10, 1600, 1774],
-
+  function testExtrapolateloseToExisting() public {
     // Chose 21 day expiry as it's on the edge closest to 22 days
     // note: in integration contracts, this would be done algorithmically
     VolGenerator.Board memory edgeBoard = getLiveBoardB();
@@ -91,43 +89,105 @@ contract VolGeneratorAcrossBoardTest is Test {
     assertApproxEqAbs(baseIv, 0.6119762171997786e18, 1e10);
 
 
-    // // result:
-    // "baseIv":0.5875674529166249
-    // "strikePrice":1310,"skew":1.4495897796173352
-    // "strikePrice":1455.05,"skew":1.1251625411995716
-    // "strikePrice":1511.1,"skew":1
-    // "strikePrice":1600,"skew":0.6847582635927397
-    // "strikePrice":1774,"skew":1.3479303458157745
+    // strike $1310
+    uint newSkew = tester.getSkewForNewBoard(1310e18, tTarget, baseIv, defaultSpot, edgeBoard);
+    assertApproxEqAbs(newSkew, 1.3917726712992229e18, 1e10);
+
+    // strike $1455.05
+    newSkew = tester.getSkewForNewBoard(1455.05e18, tTarget, baseIv, defaultSpot, edgeBoard);
+    assertApproxEqAbs(newSkew, 1.0802852625137416e18, 1e10);
+
+    // strike $1511.1
+    newSkew = tester.getSkewForNewBoard(1511.1e18, tTarget, baseIv, defaultSpot, edgeBoard);
+    assertApproxEqAbs(newSkew, 0.9601148482618476e18, 1e10);
+
+    // strike $1600
+    newSkew = tester.getSkewForNewBoard(1600e18, tTarget, baseIv, defaultSpot, edgeBoard);
+    assertApproxEqAbs(newSkew, 0.6574465763453895e18, 1e10);
+
+    // strike $1774
+    newSkew = tester.getSkewForNewBoard(1774e18, tTarget, baseIv, defaultSpot, edgeBoard);
+    assertApproxEqAbs(newSkew, 1.2941679394404522e18, 1e10);
   }
 
   function testExtrapolateLargeExpiryFarFromExisting_TODO() public {
-    // tAnnualized: 90/365,
-    // strikes: [1200, 1300, 1400, 1500, 1600, 1700, 1800]
+    // Chose 21 day expiry as it's on the edge closest to 90 days
+    // note: in integration contracts, this would be done algorithmically
+    VolGenerator.Board memory edgeBoard = getLiveBoardB();
+    uint tTarget = _secToAnnualized(90 days);
 
-    // // result:
-    // "baseIv":0.6096737568875953
-    // "strikePrice":1200,"skew":1.325017547816124
-    // "strikePrice":1300,"skew":1.1958898974527652
-    // "strikePrice":1400,"skew":1.098102145935824
-    // "strikePrice":1500,"skew":1
-    // "strikePrice":1600,"skew":0.853310835906558
-    // "strikePrice":1700,"skew":0.6851962656535058
-    // "strikePrice":1800,"skew":0.9411536105973298
+    // get Base IV first:
+    uint atmVol = tester.getSkewForNewBoard(defaultSpot, tTarget, 1e18, defaultSpot, edgeBoard);
+    uint baseIv = atmVol * 1e18 / defaultATMSkew;
+    assertApproxEqAbs(baseIv, 0.6119762171997786e18, 1e10);
+
+    // strike $1200
+    uint newSkew = tester.getSkewForNewBoard(1200e18, tTarget, baseIv, defaultSpot, edgeBoard);
+    assertApproxEqAbs(newSkew, 1.3200323862509369e18, 1e10);
+
+    // strike $1300
+    newSkew = tester.getSkewForNewBoard(1300e18, tTarget, baseIv, defaultSpot, edgeBoard);
+    assertApproxEqAbs(newSkew, 1.1913905575286992e18, 1e10);
+
+    // strike $1400
+    newSkew = tester.getSkewForNewBoard(1400e18, tTarget, baseIv, defaultSpot, edgeBoard);
+    assertApproxEqAbs(newSkew, 1.093970716415067e18, 1e10);
+
+    // strike $1500
+    newSkew = tester.getSkewForNewBoard(1500e18, tTarget, baseIv, defaultSpot, edgeBoard);
+    assertApproxEqAbs(newSkew, 0.9962376637400737e18, 1e10);
+
+    // strike $1600
+    newSkew = tester.getSkewForNewBoard(1600e18, tTarget, baseIv, defaultSpot, edgeBoard);
+    assertApproxEqAbs(newSkew, 0.8501003936076388e18, 1e10);
+
+    // strike $1700
+    newSkew = tester.getSkewForNewBoard(1700e18, tTarget, baseIv, defaultSpot, edgeBoard);
+    assertApproxEqAbs(newSkew, 0.6826183268980716e18, 1e10);
+
+    // strike $1800
+    newSkew = tester.getSkewForNewBoard(1800e18, tTarget, baseIv, defaultSpot, edgeBoard);
+    assertApproxEqAbs(newSkew, 0.937612674242019e18, 1e10);
   }
 
   function testExtrapolateSmallExpiryFarFromExisting_TODO() public {
-    // tAnnualized: 1/365,
-    // strikes: [1200, 1300, 1400, 1500, 1600, 1700, 1800]
+     // Chose 7 day expiry as it's on the edge closest to 7 days
+    // note: in integration contracts, this would be done algorithmically
+    VolGenerator.Board memory edgeBoard = getLiveBoardA();
+    uint tTarget = _secToAnnualized(1 days);
 
-    // // result:
-    // "baseIv":0.5734396267905288
-    // "strikePrice":1200,"skew":1.0876471922437108
-    // "strikePrice":1300,"skew":1.0876471922437108
-    // "strikePrice":1400,"skew":1.0876471922437108
-    // "strikePrice":1500,"skew":1
-    // "strikePrice":1600,"skew":1.315064332440123
-    // "strikePrice":1700,"skew":1.315064332440123
-    // "strikePrice":1800,"skew":1.315064332440123
+    // get Base IV first:
+    uint atmVol = tester.getSkewForNewBoard(defaultSpot, tTarget, 1e18, defaultSpot, edgeBoard);
+    uint baseIv = atmVol * 1e18 / defaultATMSkew;
+    assertApproxEqAbs(baseIv, 0.5865911557680897e18, 1e10);
+
+    // strike $1200
+    uint newSkew = tester.getSkewForNewBoard(1200e18, tTarget, baseIv, defaultSpot, edgeBoard);
+    assertApproxEqAbs(newSkew, 1.063261854303479e18, 1e10);
+
+    // strike $1300
+    newSkew = tester.getSkewForNewBoard(1300e18, tTarget, baseIv, defaultSpot, edgeBoard);
+    assertApproxEqAbs(newSkew, 1.063261854303479e18, 1e10);
+
+    // strike $1400
+    newSkew = tester.getSkewForNewBoard(1400e18, tTarget, baseIv, defaultSpot, edgeBoard);
+    assertApproxEqAbs(newSkew, 1.063261854303479e18, 1e10);
+
+    // strike $1500
+    newSkew = tester.getSkewForNewBoard(1500e18, tTarget, baseIv, defaultSpot, edgeBoard);
+    assertApproxEqAbs(newSkew, 0.9775797353092716e18, 1e10);
+
+    // strike $1600
+    newSkew = tester.getSkewForNewBoard(1600e18, tTarget, baseIv, defaultSpot, edgeBoard);
+    assertApproxEqAbs(newSkew, 1.2855802420214792e18, 1e10);
+
+    // strike $1700
+    newSkew = tester.getSkewForNewBoard(1700e18, tTarget, baseIv, defaultSpot, edgeBoard);
+    assertApproxEqAbs(newSkew, 1.2855802420214792e18, 1e10);
+
+    // strike $1800
+    newSkew = tester.getSkewForNewBoard(1800e18, tTarget, baseIv, defaultSpot, edgeBoard);
+    assertApproxEqAbs(newSkew, 1.2855802420214792e18, 1e10);
   }
 
   /////////////
