@@ -9,11 +9,13 @@ import "src/lib/StrikePriceGenerator.sol";
 contract StrikePriceTester {
   // todo [Josh]: can probably hardcode
   uint[] pivots;
+  uint[] onePiv; 
 
   constructor(uint[] memory _pivots) {
     for (uint i; i < _pivots.length; i++) {
       pivots.push(_pivots[i] * 1e18);
     }
+    onePiv.push(1000e18);
   }
 
   function getNewStrikes(
@@ -234,6 +236,11 @@ contract StrikePriceGeneratorTest is Test {
     assertEq(tester.getStep(13_456_000e18, _secToAnnualized(5 days)), 336_400e18);
 
     assertEq(tester.getStep(1e18, _secToAnnualized(100 weeks)), 2e17);
+  }
+
+  function TestCannotGetLeftNearestPivot(uint spot) public {    
+    uint res = StrikePriceGenerator.getLeftNearestPivot(onePiv, spot);
+    assertEq(res, 1e18);
   }
 
   /////////////

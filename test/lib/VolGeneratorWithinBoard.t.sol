@@ -12,6 +12,19 @@ contract VolGeneratorWithinBoardTest is Test {
     tester = new VolGeneratorTester();
   }
 
+  function testWillRevertOnNoLiveStrikes() public {
+    VolGenerator.Board memory liveBoard = VolGenerator.Board({
+      tAnnualized: 0,
+      baseIv: 10 * 1e17,
+      orderedStrikePrices: new uint[](0),
+      orderedSkews: new uint[](0)
+    });
+
+    // Strike: $1500
+    vm.expectRevert();
+    tester.getSkewForLiveBoard(1500 * 1e18, liveBoard);
+  }
+
   function testInterpolationRandom() public {
     VolGenerator.Board memory liveBoard = getLiveBoardA();
 
@@ -70,6 +83,11 @@ contract VolGeneratorWithinBoardTest is Test {
     // strike $10000000
     newSkew = tester.getSkewForLiveBoard(10000000e18, liveBoard);
     assertApproxEqAbs(newSkew, 1.2e18, 1e10);
+  }
+
+  function testWillRevertOnImproperBounds() public {
+    vm.expectRevert("VG_ImproperExpiryOrderDuringInterpolation");
+
   }
 
   /////////////
