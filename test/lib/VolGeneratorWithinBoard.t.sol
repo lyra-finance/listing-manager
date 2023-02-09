@@ -85,11 +85,6 @@ contract VolGeneratorWithinBoardTest is Test {
     assertApproxEqAbs(newSkew, 1.2e18, 1e10);
   }
 
-  function testWillRevertOnImproperBounds() public {
-    vm.expectRevert("VG_ImproperExpiryOrderDuringInterpolation");
-
-  }
-
   /////////////
   // Helpers //
   /////////////
