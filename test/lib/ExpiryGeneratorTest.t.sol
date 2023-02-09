@@ -114,7 +114,6 @@ contract ExpiryGeneratorTest is Test {
     for(uint i; i < expiriesReturned.length; i++) {
       console.log(expiriesReturned[i]);
     }
-
   }
 
   // helpers
