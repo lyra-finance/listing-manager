@@ -67,8 +67,6 @@ library ExpiryGenerator {
   * @param liveExpiries the list of expiries that are currently live
   * @return uint[] the array of expiries
   */
-  // TODO: need to check that the array is not adding already existing expiries and puts them inbetween
-  // the monthlies and weeklies
   function _nextExpiriesGenerator(
     uint nWeeklies,
     uint nMonthlies,
@@ -99,7 +97,8 @@ library ExpiryGenerator {
     // if there is more than 1 monthly add to expiries array
     for (uint i = 0; i < nMonthlies; i++) {
       uint monthlyStamp = lastFridays[monthlyIndex + i];
-      if (UnorderedMemoryArray.findInArray(expiries, monthlyStamp, nWeeklies) != -1 && UnorderedMemoryArray.findInArray(liveExpiries, monthlyStamp, liveExpiries.length) != -1) {
+      if (UnorderedMemoryArray.findInArray(expiries, monthlyStamp, nWeeklies) != -1 
+      || UnorderedMemoryArray.findInArray(liveExpiries, monthlyStamp, liveExpiries.length) != -1) {
         // if the weekly expiry is already in the monthlies array
         // then we need to add the next friday
         continue;

@@ -10,7 +10,8 @@ contract ExpiryGeneratorTest is Test {
   using stdJson for string;
 
   uint[] fridays;
-
+  uint[] liveExpiries;
+  
   function setUp() public {
     // load fridays.json into strikePriceTester
     string memory path = string.concat(vm.projectRoot(), "/script/params/fridays.json");
@@ -102,14 +103,18 @@ contract ExpiryGeneratorTest is Test {
   function testGetNewExpiriesWith1Board() public {
     uint nWeeks = 2;
     uint nMonths = 3;
-    uint[] memory liveExpiries = new uint[](2);
-    liveExpiries[0] = 1680249600;
-    liveExpiries[1] = 1682668800;
+    liveExpiries.push(1680249600);
+    liveExpiries.push(1682668800);
     uint[] memory expiriesReturned = ExpiryGenerator.getNextExpiries(nWeeks, nMonths, block.timestamp, fridays, liveExpiries);
     
     for (uint i; i < liveExpiries.length; i++) {
       assertEq(contains(expiriesReturned, liveExpiries[i]), false);
     }
+
+    for(uint i; i < expiriesReturned.length; i++) {
+      console.log(expiriesReturned[i]);
+    }
+
   }
 
   // helpers
