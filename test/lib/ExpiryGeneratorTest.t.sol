@@ -99,6 +99,20 @@ contract ExpiryGeneratorTest is Test {
     }
   }
 
+  function testGetNewExpiriesWith1Board() public {
+    uint nWeeks = 2;
+    uint nMonths = 3;
+    uint[] memory liveExpiries = [
+      1680249600,
+      1682668800
+    ];
+    uint[] memory expiriesReturned = ExpiryGenerator.getNextExpiries(nWeeks, nMonths, block.timestamp, fridays, );
+    
+    for (uint i; i < expiriesReturned.length; i++) {
+      assertEq(expiriesReturned[i], liveExpiries[i]);
+    }
+  }
+
   // helpers
   function _getNextFriday(uint256 timestamp) public pure returns (uint256) {
     uint timezoneOffset = 3600 * 8; // 8 hours in seconds (UTC + 8)

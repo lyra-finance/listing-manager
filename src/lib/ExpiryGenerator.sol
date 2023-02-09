@@ -37,8 +37,7 @@ library ExpiryGenerator {
     uint[] storage liveExpiries
   ) public view returns(uint[] memory) {    
     // need to consider that this might be being called to produce expiries for boards inside one another.
-    uint latestTimeStamp = Arrays.findUpperBound(liveExpiries, timestamp);
-    return _expiriesGenerator(nWeeklies, nMonthlies, latestTimeStamp, lastFridays);
+    return _nextExpiriesGenerator(nWeeklies, nMonthlies, timestamp, lastFridays, liveExpiries);
   }
 
   /**  @notice Called when there are no boards currently deployed.
@@ -57,6 +56,67 @@ library ExpiryGenerator {
     return _expiriesGenerator(nWeeklies, nMonthlies, timestamp, lastFridays);
   }
 
+
+
+  /** @notice A function that generates a list of expiries
+  * @dev Shoudl check for zeroed array indexs
+  * @param nWeeklies Number of weeklies to generate
+  * @param nMonthlies Number of monthlies to generate
+  * @param timestamp The current timestamp
+  * @param lastFridays The list of last fridays
+  * @param liveExpiries the list of expiries that are currently live
+  * @return uint[] the array of expiries
+  */
+  // TODO: need to check that the array is not adding already existing expiries and puts them inbetween
+  // the monthlies and weeklies
+  function _nextExpiriesGenerator(
+    uint nWeeklies,
+    uint nMonthlies,
+    uint timestamp,
+    uint[] storage lastFridays,
+    uint[] storage liveExpiries
+  ) internal view returns (uint[] memory) {
+    uint[] memory expiries = new uint[](nWeeklies + nMonthlies);
+    uint weeklyExpiry = _getNextFriday(timestamp);
+    
+    // need to make sure that the previous monthlies over lap with the next weeklies
+    uint weeklyInsertIndex = 0;
+    // generating weeklies first
+    for (uint i = 0; i < nWeeklies; i++) {
+      if(UnorderedMemoryArray.findInArray(liveExpiries, weeklyExpiry, liveExpiries.length) != -1) {
+        // if the weekly expiry is already in the monthlies array
+        // then we need to add the next friday
+        weeklyExpiry += 7 days;
+      }
+
+      expiries[weeklyInsertIndex] = weeklyExpiry;
+      weeklyExpiry += 7 days;
+      weeklyInsertIndex++;
+    }
+
+    uint monthlyIndex = Arrays.findUpperBound(lastFridays, timestamp);
+    uint monthlyInsertIndex = nWeeklies;
+    // if there is more than 1 monthly add to expiries array
+    for (uint i = 0; i < nMonthlies; i++) {
+      uint monthlyStamp = lastFridays[monthlyIndex + i];
+      if (UnorderedMemoryArray.findInArray(expiries, monthlyStamp, nWeeklies) != -1 && UnorderedMemoryArray.findInArray(liveExpiries, monthlyStamp, liveExpiries.length) != -1) {
+        // if the weekly expiry is already in the monthlies array
+        // then we need to add the next friday
+        continue;
+      }
+      expiries[monthlyInsertIndex] = monthlyStamp;
+      monthlyInsertIndex++;
+    }
+
+    // trims trailing zeros
+    assembly {
+      mstore(expiries, sub(mload(expiries), sub(add(nWeeklies, nMonthlies), monthlyInsertIndex)))
+    }
+    // should think about trimming the array if there are overlaps in the monthlys
+    return expiries;
+  }
+
+
   /** @notice A function that generates a list of expiries
   * @dev Shoudl check for zeroed array indexs
   * @param nWeeklies Number of weeklies to generate
@@ -72,8 +132,8 @@ library ExpiryGenerator {
     uint[] storage lastFridays
   ) internal view returns (uint[] memory) {
     uint[] memory expiries = new uint[](nWeeklies + nMonthlies);
-
     uint weeklyExpiry = _getNextFriday(timestamp);
+    
     for (uint i = 0; i < nWeeklies; i++) {
       expiries[i] = weeklyExpiry;
       weeklyExpiry += 7 days;
@@ -81,11 +141,9 @@ library ExpiryGenerator {
     
     uint monthlyIndex = Arrays.findUpperBound(lastFridays, timestamp);
     uint insertIndex = nWeeklies;
-    console2.log("expiries length", expiries.length);
     // if there is more than 1 monthly add to expiries array
     for (uint i = 0; i < nMonthlies; i++) {
       uint monthlyStamp = lastFridays[monthlyIndex + i];
-      console2.log("monthly stamp", monthlyStamp);
       if (UnorderedMemoryArray.findInArray(expiries, monthlyStamp, nWeeklies) != -1) {
         // if the weekly expiry is already in the monthlies array
         // then we need to add the next friday
@@ -116,6 +174,16 @@ library ExpiryGenerator {
     uint timezoneOffset = 3600 * 8; // 8 hours in seconds (UTC + 8)
 
     return timestamp + (5 - (timestamp / 86400 + 4) % 7) * 86400 + timezoneOffset;
+  }
+
+  function _getNumberOfOverlapping(uint[] storage liveExpiries, uint[] memory expiries) internal view returns (uint) {
+    uint count = 0;
+    for (uint i = 0; i < expiries.length; i++) {
+      if (UnorderedMemoryArray.findInArray(liveExpiries, expiries[i], 0) != -1) {
+        count++;
+      }
+    }
+    return count;
   }
 
   /// errors
