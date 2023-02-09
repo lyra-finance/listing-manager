@@ -85,6 +85,7 @@ library ExpiryGenerator {
         // if the weekly expiry is already in the monthlies array
         // then we need to add the next friday
         weeklyExpiry += 7 days;
+        continue;
       }
 
       expiries[weeklyInsertIndex] = weeklyExpiry;

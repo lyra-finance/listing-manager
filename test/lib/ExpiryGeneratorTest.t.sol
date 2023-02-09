@@ -116,6 +116,32 @@ contract ExpiryGeneratorTest is Test {
     }
   }
 
+  function testGetNewExpiriesBetweenThreeMonthlies() public {
+    uint nWeeks = 12;
+    uint nMonths = 0;
+    liveExpiries.push(1680249600); // 5 fridays between march - april
+    liveExpiries.push(1682668800);
+    liveExpiries.push(1685254400);
+    uint[] memory expiriesReturned = ExpiryGenerator.getNextExpiries(nWeeks, nMonths, block.timestamp, fridays, liveExpiries);
+    
+    for (uint i; i < liveExpiries.length; i++) {
+      assertEq(contains(expiriesReturned, liveExpiries[i]), false);
+    }
+
+    assertEq(contains(expiriesReturned, 1680249600 + 7 days), true);
+    assertEq(contains(expiriesReturned, 1680249600 + 14 days), true);
+    assertEq(contains(expiriesReturned, 1680249600 + 21 days), true);
+    assertEq(contains(expiriesReturned, 1680249600 + 28 days), false); // as already included in the stirkes
+    assertEq(contains(expiriesReturned, 1682668800 + 7 days), true);
+    assertEq(contains(expiriesReturned, 1682668800 + 14 days), true);
+    assertEq(contains(expiriesReturned, 1682668800 + 21 days), true);
+    assertEq(contains(expiriesReturned, 1682668800 + 28 days), false);
+
+    for (uint i; i < expiriesReturned.length; i++) {
+      console.log(expiriesReturned[i]);
+    }
+  }
+
   // helpers
   function _getNextFriday(uint256 timestamp) public pure returns (uint256) {
     uint timezoneOffset = 3600 * 8; // 8 hours in seconds (UTC + 8)
