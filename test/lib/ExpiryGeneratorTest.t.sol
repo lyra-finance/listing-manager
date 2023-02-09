@@ -102,14 +102,13 @@ contract ExpiryGeneratorTest is Test {
   function testGetNewExpiriesWith1Board() public {
     uint nWeeks = 2;
     uint nMonths = 3;
-    uint[] memory liveExpiries = [
-      1680249600,
-      1682668800
-    ];
-    uint[] memory expiriesReturned = ExpiryGenerator.getNextExpiries(nWeeks, nMonths, block.timestamp, fridays, );
+    uint[] memory liveExpiries = new uint[](2);
+    liveExpiries[0] = 1680249600;
+    liveExpiries[1] = 1682668800;
+    uint[] memory expiriesReturned = ExpiryGenerator.getNextExpiries(nWeeks, nMonths, block.timestamp, fridays, liveExpiries);
     
-    for (uint i; i < expiriesReturned.length; i++) {
-      assertEq(expiriesReturned[i], liveExpiries[i]);
+    for (uint i; i < liveExpiries.length; i++) {
+      assertEq(contains(expiriesReturned, liveExpiries[i]), false);
     }
   }
 
