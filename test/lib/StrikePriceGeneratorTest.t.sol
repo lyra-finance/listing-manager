@@ -237,7 +237,7 @@ contract StrikePriceGeneratorTest is Test {
   }
 
   // TODO: figure out how to do this test
-  // function TestCannotGetLeftNearestPivot(uint spot) public {    
+  // function TestCannotGetLeftNearestPivot(uint spot) public {
   //   uint res = StrikePriceGenerator.getLeftNearestPivot(onePiv, spot);
   //   assertEq(res, 1e18);
   // }
