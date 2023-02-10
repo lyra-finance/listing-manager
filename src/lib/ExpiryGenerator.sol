@@ -80,6 +80,7 @@ library ExpiryGenerator {
     // need to make sure that the previous monthlies over lap with the next weeklies
     uint weeklyInsertIndex = 0;
     // generating weeklies first
+  
     for (uint i = 0; i < nWeeklies; i++) {
       if(UnorderedMemoryArray.findInArray(liveExpiries, weeklyExpiry, liveExpiries.length) != -1) {
         // if the weekly expiry is already in the monthlies array
@@ -108,10 +109,6 @@ library ExpiryGenerator {
       monthlyInsertIndex++;
     }
 
-    // trims trailing zeros
-    assembly {
-      mstore(expiries, sub(mload(expiries), sub(add(nWeeklies, nMonthlies), monthlyInsertIndex)))
-    }
     // should think about trimming the array if there are overlaps in the monthlys
     return expiries;
   }
@@ -153,10 +150,6 @@ library ExpiryGenerator {
       insertIndex++;
     }
 
-    // trims trailing zeros
-    assembly {
-      mstore(expiries, sub(mload(expiries), sub(add(nWeeklies, nMonthlies), insertIndex)))
-    }
     // should think about trimming the array if there are overlaps in the monthlys
     return expiries;
   }
