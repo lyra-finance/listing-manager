@@ -102,13 +102,35 @@ contract ListingManager {
     // for the given board, see if any strikes can be added based on the schema
     // if so; request the skews from the libraries
     // and then add to queue
+
+    // Note: should be blocked when circuit breakers are firing
+
+    // TODO: fetch data from newport contracts, fit into the format needed for the library and generate output/queue
   }
 
   function findAndQueueNewBoard() external {
     // TODO: Figure out if any expiry is missing from our structure/within a max expiry
     // info in keynote presentation - basically need to hardcode monthly expiries for the next 10-20 years - then have
     // a process for adding weekly expiries up to 10-12 weeks
+
+    // Note: should be blocked when circuit breakers are firing
+
+    // TODO: fetch data from newport contracts, fit into the format needed for the library and generate output/queue
   }
+
+  function executeQueuedStrikes(uint boardId) external {
+    // Note: should be blocked (probably actually just reverted?) when circuit breakers are firing
+  }
+  function executeQueuedBoard(uint expiry) external {
+    // Note: should be blocked (probably actually just reverted?) when circuit breakers are firing
+  }
+
+
+
+
+
+
+
 
   /////////////////////////
   /////////////////////////
