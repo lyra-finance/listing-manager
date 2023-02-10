@@ -21,7 +21,7 @@ contract VolGeneratorWithinBoardTest is Test {
     });
 
     // Strike: $1500
-    vm.expectRevert();
+    vm.expectRevert(VolGenerator.VG_NoStrikes.selector);
     tester.getSkewForLiveBoard(1500 * 1e18, liveBoard);
   }
 

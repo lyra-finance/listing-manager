@@ -126,13 +126,6 @@ contract ListingManager is LastFridays {
     // Note: should be blocked (probably actually just reverted?) when circuit breakers are firing
   }
 
-
-
-
-
-
-
-
   /////////////////////////
   /////////////////////////
   ////                 ////

@@ -13,8 +13,8 @@ import "forge-std/console2.sol";
  * @title Automated Expiry Generator
  * @author Lyra
  * @notice This Library automatically generates expiry times for various boards
- *         The intent being to automate the way that boards and strikes are listed
- *         Whilst ensuring that the expiries make sense are in reasonable timeframes
+ * The intent being to automate the way that boards and strikes are listed
+ * Whilst ensuring that the expiries make sense are in reasonable timeframes
  */
 library ExpiryGenerator {
   using DecimalMath for uint;
@@ -48,12 +48,11 @@ library ExpiryGenerator {
    * @param timestamp current timestamp
    * @return uint[] the return variables of a contract’s function state variable
    */
-  function getNewExpiry(
-    uint nWeeklies,
-    uint nMonthlies,
-    uint timestamp,
-    uint[] storage lastFridays
-  ) public view returns (uint[] memory) {
+  function getNewExpiry(uint nWeeklies, uint nMonthlies, uint timestamp, uint[] storage lastFridays)
+    public
+    view
+    returns (uint[] memory)
+  {
     return _expiriesGenerator(nWeeklies, nMonthlies, timestamp, lastFridays);
   }
 
@@ -120,12 +119,11 @@ library ExpiryGenerator {
    * @param lastFridays The list of last fridays
    * @return uint[] the array of expiries
    */
-  function _expiriesGenerator(
-    uint nWeeklies,
-    uint nMonthlies,
-    uint timestamp,
-    uint[] storage lastFridays
-  ) internal view returns (uint[] memory) {
+  function _expiriesGenerator(uint nWeeklies, uint nMonthlies, uint timestamp, uint[] storage lastFridays)
+    internal
+    view
+    returns (uint[] memory)
+  {
     uint[] memory expiries = new uint[](nWeeklies + nMonthlies);
     uint weeklyExpiry = _getNextFriday(timestamp);
 

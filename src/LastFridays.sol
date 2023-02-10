@@ -2,7 +2,7 @@
 pragma solidity 0.8.16;
 
 abstract contract LastFridays {
-  uint[256] lastFridays = [
+  uint[] lastFridays = [
     1674806400,
     1677225600,
     1680249600,

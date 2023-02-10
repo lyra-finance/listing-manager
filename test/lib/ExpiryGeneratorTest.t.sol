@@ -5,18 +5,14 @@ import "openzeppelin/utils/Arrays.sol";
 import "src/lib/ExpiryGenerator.sol";
 import "forge-std/Test.sol";
 import "forge-std/StdJson.sol";
+import "../../src/LastFridays.sol";
 
-contract ExpiryGeneratorTest is Test {
+contract ExpiryGeneratorTest is Test, LastFridays {
   using stdJson for string;
 
-  uint[] fridays;
   uint[] liveExpiries;
 
   function setUp() public {
-    // load fridays.json into strikePriceTester
-    string memory path = string.concat(vm.projectRoot(), "/script/params/fridays.json");
-    string memory json = vm.readFile(path);
-    fridays = json.readUintArray(".fridays");
     // 1/03/2023 00:00:00
     vm.warp(1677628800);
   }
@@ -24,7 +20,7 @@ contract ExpiryGeneratorTest is Test {
   function testGetNewExpiryBase() public {
     uint nWeeks = 1;
     uint nMonths = 2;
-    uint[] memory expiriesReturned = ExpiryGenerator.getNewExpiry(nWeeks, nMonths, block.timestamp, fridays);
+    uint[] memory expiriesReturned = ExpiryGenerator.getNewExpiry(nWeeks, nMonths, block.timestamp, lastFridays);
     for (uint i; i < expiriesReturned.length; i++) {
       console.log(expiriesReturned[i]);
     }
@@ -41,7 +37,7 @@ contract ExpiryGeneratorTest is Test {
   function testGet3MonthsWorthOfWeeklies() public {
     uint nWeeks = 12;
     uint nMonths = 0;
-    uint[] memory expiriesReturned = ExpiryGenerator.getNewExpiry(nWeeks, nMonths, block.timestamp, fridays);
+    uint[] memory expiriesReturned = ExpiryGenerator.getNewExpiry(nWeeks, nMonths, block.timestamp, lastFridays);
 
     uint startTime = _getNextFriday(block.timestamp);
 
@@ -53,29 +49,29 @@ contract ExpiryGeneratorTest is Test {
   function testGet6MonthsOfMonthlies() public {
     uint nWeeks = 0;
     uint nMonths = 6;
-    uint[] memory expiriesReturned = ExpiryGenerator.getNewExpiry(nWeeks, nMonths, block.timestamp, fridays);
+    uint[] memory expiriesReturned = ExpiryGenerator.getNewExpiry(nWeeks, nMonths, block.timestamp, lastFridays);
 
     uint monthlyIndex = 0;
-    for (uint i; i < fridays.length; i++) {
-      if (fridays[i] > block.timestamp) {
+    for (uint i; i < lastFridays.length; i++) {
+      if (lastFridays[i] > block.timestamp) {
         monthlyIndex = i;
         break;
       }
     }
 
     for (uint i; i < expiriesReturned.length; i++) {
-      assertEq(expiriesReturned[i], fridays[monthlyIndex + i]);
+      assertEq(expiriesReturned[i], lastFridays[monthlyIndex + i]);
     }
   }
 
   function testGet3Monthlies5Weeklies() public {
     uint nWeeks = 5;
     uint nMonths = 3;
-    uint[] memory expiriesReturned = ExpiryGenerator.getNewExpiry(nWeeks, nMonths, block.timestamp, fridays);
+    uint[] memory expiriesReturned = ExpiryGenerator.getNewExpiry(nWeeks, nMonths, block.timestamp, lastFridays);
 
     uint monthlyIndex = 0;
-    for (uint i; i < fridays.length; i++) {
-      if (fridays[i] > block.timestamp) {
+    for (uint i; i < lastFridays.length; i++) {
+      if (lastFridays[i] > block.timestamp) {
         monthlyIndex = i;
         break;
       }
@@ -90,7 +86,7 @@ contract ExpiryGeneratorTest is Test {
 
     for (uint i; i < nMonths; i++) {
       // should contain every friday 5 weeks out and 2 monthlies out
-      assertEq(contains(expiriesReturned, fridays[monthlyIndex + i]), true);
+      assertEq(contains(expiriesReturned, lastFridays[monthlyIndex + i]), true);
     }
 
     // print expiriesReturned
@@ -105,7 +101,7 @@ contract ExpiryGeneratorTest is Test {
     liveExpiries.push(1680249600);
     liveExpiries.push(1682668800);
     uint[] memory expiriesReturned =
-      ExpiryGenerator.getNextExpiries(nWeeks, nMonths, block.timestamp, fridays, liveExpiries);
+      ExpiryGenerator.getNextExpiries(nWeeks, nMonths, block.timestamp, lastFridays, liveExpiries);
 
     for (uint i; i < liveExpiries.length; i++) {
       assertEq(contains(expiriesReturned, liveExpiries[i]), false);
@@ -123,7 +119,7 @@ contract ExpiryGeneratorTest is Test {
     liveExpiries.push(1682668800);
     liveExpiries.push(1685254400);
     uint[] memory expiriesReturned =
-      ExpiryGenerator.getNextExpiries(nWeeks, nMonths, block.timestamp, fridays, liveExpiries);
+      ExpiryGenerator.getNextExpiries(nWeeks, nMonths, block.timestamp, lastFridays, liveExpiries);
 
     for (uint i; i < liveExpiries.length; i++) {
       assertEq(contains(expiriesReturned, liveExpiries[i]), false);

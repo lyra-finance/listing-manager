@@ -17,8 +17,8 @@ import "forge-std/console.sol";
  * @title Automated vol generator
  * @author Lyra
  * @notice The library automatically generates baseIv and skews for
- *         various input strikes. It uses other boards or existing strikes
- *         to best approximate an initial baseIv or skew for each new strike.
+ * various input strikes. It uses other boards or existing strikes
+ * to best approximate an initial baseIv or skew for each new strike.
  */
 library VolGenerator {
   using DecimalMath for uint;
@@ -44,9 +44,9 @@ library VolGenerator {
 
   /**
    * @notice Returns the skew for a given strike
-   *				 when the new board has both an adjacent short and long dated boards.
-   *				 E.g. for a new strike: 3mo time to expiry, and liveBoards: [1d, 1mo, 6mo]
-   *				 The returned new strike volatility = baseIv * newSkew
+   * when the new board has both an adjacent short and long dated boards.
+   * E.g. for a new strike: 3mo time to expiry, and liveBoards: [1d, 1mo, 6mo]
+   * The returned new strike volatility = baseIv * newSkew
    * @param newStrike the strike price for which to find the skew
    * @param tTarget annualized time to expiry
    * @param baseIv base volatility for the given strike
@@ -81,22 +81,20 @@ library VolGenerator {
 
   /**
    * @notice Returns the skew for a given strike
-   *				 when the new board does not have adjacent boards on both sides.
-   *				 E.g. for a new strike: 3mo time to expiry, but liveBoards: [1d, 1w, 1mo]
-   *				 The returned new strike volatility = baseIv * newSkew.
+   * when the new board does not have adjacent boards on both sides.
+   * E.g. for a new strike: 3mo time to expiry, but liveBoards: [1d, 1w, 1mo]
+   * The returned new strike volatility = baseIv * newSkew.
    * @param newStrike the strike price for which to find the skew
    * @param tTarget annualized time to expiry
    * @param baseIv base volatility for the given strike
    * @param edgeBoard Board details of the board with a shorter or longer time to expiry
    * @return newSkew Estimated skew of the new strike
    */
-  function getSkewForNewBoard(
-    uint newStrike,
-    uint tTarget,
-    uint baseIv,
-    uint spot,
-    Board memory edgeBoard
-  ) public pure returns (uint newSkew) {
+  function getSkewForNewBoard(uint newStrike, uint tTarget, uint baseIv, uint spot, Board memory edgeBoard)
+    public
+    pure
+    returns (uint newSkew)
+  {
     return _extrapolateSkewAcrossBoards(
       newStrike,
       edgeBoard.orderedStrikePrices,
@@ -111,7 +109,7 @@ library VolGenerator {
 
   /**
    * @notice Returns the skew for a given strike that lies within an existing board.
-   *				 The returned new strike volatility = baseIv * newSkew.
+   * The returned new strike volatility = baseIv * newSkew.
    * @param newStrike the strike price for which to find the skew
    * @param liveBoard Board details of the live board
    * @return newSkew Estimated skew of the new strike
@@ -186,8 +184,8 @@ library VolGenerator {
 
   /**
    * @notice Extrapolates skew for a strike on a new board.
-   *			   Assumes: sigma(z(T1), T1) == sigma(z(T2), T2)
-   *				 i.e. "2mo 80-delta option" has same vol as "3mo 80-delta option".
+   * Assumes: sigma(z(T1), T1) == sigma(z(T2), T2)
+   * i.e. "2mo 80-delta option" has same vol as "3mo 80-delta option".
    * @param newStrike The "live" volatility slice in the form of ExpiryData.
    * @param orderedEdgeBoardStrikes Ordered list of strikes of the live board closest to the new board.
    * @param orderedEdgeBoardSkews Skews of the live board in the same order as the strikes.
@@ -277,10 +275,10 @@ library VolGenerator {
   /**
    * @notice Converts a $ strike to standard moneyness.
    * @dev By "standard" moneyness we mean moneyness := ln(K/S) / sqrt(T).
-   *      This value allows us to avoid delta calculations.
-   *      Delta maps one-to-one to Black-Scholes d1, and this is a "simple" version of d1.
-   *      So instead of using / computing / inverting delta, we can just find moneyness
-   *      That maps to desired delta values, and use it instead.
+   * This value allows us to avoid delta calculations.
+   * Delta maps one-to-one to Black-Scholes d1, and this is a "simple" version of d1.
+   * So instead of using / computing / inverting delta, we can just find moneyness
+   * That maps to desired delta values, and use it instead.
    * @param strike dollar strike, 18 decimals
    * @param spot dollar Chainlink spot, 18 decimals
    * @param tAnnualized annualized time-to-expiry, 18 decimals
@@ -293,7 +291,7 @@ library VolGenerator {
 
   /**
    * @notice Converts standard moneyness back to a $ strike.
-   * 				 Inverse of `strikeToMoneyness()`.
+   * Inverse of `strikeToMoneyness()`.
    * @param moneyness moneyness as defined in _strikeToMoneyness()
    * @param spot dollar Chainlink spot, 18 decimals
    * @param tAnnualized annualized time-to-expiry, 18 decimals
@@ -316,12 +314,11 @@ library VolGenerator {
     return variance.multiplyDecimal(variance);
   }
 
-  function sqrtWeightedAvg(
-    uint leftVal,
-    uint leftWeight,
-    uint rightWeight,
-    uint denominator
-  ) public pure returns (uint) {
+  function sqrtWeightedAvg(uint leftVal, uint leftWeight, uint rightWeight, uint denominator)
+    public
+    pure
+    returns (uint)
+  {
     uint weightedAvg = leftVal.multiplyDecimal(leftWeight) + (DecimalMath.UNIT - leftVal).multiplyDecimal(rightWeight);
 
     return Math.sqrt(weightedAvg.divideDecimal(denominator) * DecimalMath.UNIT);
