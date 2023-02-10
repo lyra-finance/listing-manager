@@ -10,6 +10,9 @@ import "newport/synthetix/SignedDecimalMath.sol";
 import "newport/libraries/FixedPointMathLib.sol";
 import "lyra-utils/arrays/MemoryBinarySearch.sol";
 
+// TODO: Remove before push
+import "forge-std/console.sol";
+
 /**
  * @title Automated vol generator
  * @author Lyra

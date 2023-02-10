@@ -236,6 +236,12 @@ contract StrikePriceGeneratorTest is Test {
     assertEq(tester.getStep(1e18, _secToAnnualized(100 weeks)), 2e17);
   }
 
+  // TODO: figure out how to do this test
+  // function TestCannotGetLeftNearestPivot(uint spot) public {
+  //   uint res = StrikePriceGenerator.getLeftNearestPivot(onePiv, spot);
+  //   assertEq(res, 1e18);
+  // }
+
   /////////////
   // Helpers //
   /////////////
