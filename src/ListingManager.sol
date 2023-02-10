@@ -7,8 +7,9 @@ import "../lib/lyra-protocol/contracts/synthetix/DecimalMath.sol";
 import "./TODO_CLEANUP_Interfaces.sol";
 
 import "forge-std/console.sol";
+import "./LastFridays.sol";
 
-contract ListingManager {
+contract ListingManager is LastFridays {
   using DecimalMath for uint;
 
   struct QueuedBoard {
