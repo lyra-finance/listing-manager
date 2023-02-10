@@ -78,9 +78,7 @@ library ExpiryGenerator {
     uint weeklyExpiry = _getNextFriday(timestamp);
     
     // need to make sure that the previous monthlies over lap with the next weeklies
-    uint weeklyInsertIndex = 0;
-    // generating weeklies first
-  
+    uint weeklyInsertIndex = 0; 
     for (uint i = 0; i < nWeeklies; i++) {
       if(UnorderedMemoryArray.findInArray(liveExpiries, weeklyExpiry, liveExpiries.length) != -1) {
         // if the weekly expiry is already in the monthlies array
@@ -95,7 +93,6 @@ library ExpiryGenerator {
     }
 
     uint monthlyIndex = Arrays.findUpperBound(lastFridays, timestamp);
-    uint monthlyInsertIndex = nWeeklies;
     // if there is more than 1 monthly add to expiries array
     for (uint i = 0; i < nMonthlies; i++) {
       uint monthlyStamp = lastFridays[monthlyIndex + i];
@@ -105,8 +102,7 @@ library ExpiryGenerator {
         // then we need to add the next friday
         continue;
       }
-      expiries[monthlyInsertIndex] = monthlyStamp;
-      monthlyInsertIndex++;
+      expiries[weeklyInsertIndex + i] = monthlyStamp;
     }
 
     // should think about trimming the array if there are overlaps in the monthlys
@@ -168,16 +164,5 @@ library ExpiryGenerator {
 
     return timestamp + (5 - (timestamp / 86400 + 4) % 7) * 86400 + timezoneOffset;
   }
-
-  function _getNumberOfOverlapping(uint[] storage liveExpiries, uint[] memory expiries) internal view returns (uint) {
-    uint count = 0;
-    for (uint i = 0; i < expiries.length; i++) {
-      if (UnorderedMemoryArray.findInArray(liveExpiries, expiries[i], 0) != -1) {
-        count++;
-      }
-    }
-    return count;
-  }
-
   /// errors
 }
