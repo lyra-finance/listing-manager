@@ -1,30 +1,39 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+//SPDX-License-Identifier: ISC
+pragma solidity 0.8.16;
 
 import "forge-std/Test.sol";
 
 import "../../src/ListingManager.sol";
-import "../mocks/TODO_CLEANUP_Mocks.sol";
-import "./setupMocks/LyraRegistryMockSetup.sol";
+import "../mocks/LyraContractMocks.sol";
 import "./setupMocks/OptionMarketMockSetup.sol";
+import "./testContracts/TestListingManager.sol";
 
-contract ListingManagerTestBase is Test, LyraRegistryMockSetup, OptionMarketMockSetup {
+contract ListingManagerTestBase is Test, OptionMarketMockSetup {
   IOptionGreekCache greekCache;
   IOptionMarket optionMarket;
-  ILyraRegistry lyraRegistry;
+  ILiquidityPool liquidityPool;
   IBaseExchangeAdapter exchangeAdapter;
-  ListingManager listingManager;
+  TestListingManager listingManager;
 
   constructor() {}
 
   function setUp() public {
     greekCache = new MockOptionGreekCache();
     optionMarket = new MockOptionMarket();
-    lyraRegistry = new MockLyraRegistry();
     exchangeAdapter = new MockBaseExchangeAdapter();
-    listingManager = new ListingManager(lyraRegistry);
+    liquidityPool = new MockLiquidityPool();
 
-    LyraRegistryMockSetup.setUpLyraRegistryMock(lyraRegistry, optionMarket, greekCache, exchangeAdapter);
+    listingManager = new TestListingManager(exchangeAdapter, liquidityPool, greekCache, optionMarket);
+
     OptionMarketMockSetup.mockDefaultBoard(optionMarket, greekCache);
+    mockSpotPrice(1500 ether);
+  }
+
+  function mockSpotPrice(uint spotPrice) internal {
+    vm.mockCall(
+      address(exchangeAdapter),
+      abi.encodeWithSelector(IBaseExchangeAdapter.getSpotPriceForMarket.selector),
+      abi.encode(spotPrice)
+    );
   }
 }

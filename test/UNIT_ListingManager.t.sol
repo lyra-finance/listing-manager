@@ -1,10 +1,10 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+//SPDX-License-Identifier: ISC
+pragma solidity 0.8.16;
 
 import "forge-std/Test.sol";
 
 import "../src/ListingManager.sol";
-import "./mocks/TODO_CLEANUP_Mocks.sol";
+import "./mocks/LyraContractMocks.sol";
 import "./utils/ListingManagerTestBase.sol";
 
 contract ListingManagerTest is ListingManagerTestBase {
@@ -12,17 +12,14 @@ contract ListingManagerTest is ListingManagerTestBase {
   // Setup //
   ///////////
 
-  function testListingManagerSetup() public {
-    assertEq(address(lyraRegistry.getMarketAddresses(address(0)).greekCache), address(0));
-    assertEq(address(lyraRegistry.getMarketAddresses(address(optionMarket)).greekCache), address(greekCache));
-    assertEq(lyraRegistry.getGlobalAddress(bytes32("EXCHANGE_ADAPTER")), address(exchangeAdapter));
-    assertEq(lyraRegistry.getGlobalAddress(bytes32("EXCHANGEADAPTERR")), address(0));
+  function testGetNewBoardData() public {
+    uint[] memory newStrikes = new uint[](5);
+    newStrikes[0] = 1200 ether;
+    newStrikes[1] = 1300 ether;
+    newStrikes[2] = 1400 ether;
+    newStrikes[3] = 1500 ether;
+    newStrikes[4] = 1600 ether;
 
-    ListingManager.BoardDetails memory res = listingManager.getSortedBoardDetails(optionMarket, greekCache, 0);
-    console.log(res.strikes[0].strikePrice);
-    console.log(res.strikes[1].strikePrice);
-    console.log(res.strikes[2].strikePrice);
-    console.log(res.strikes[3].strikePrice);
-    console.log(res.strikes[4].strikePrice);
+    ListingManager.QueuedBoard memory res = listingManager.TEST_getNewBoardData(block.timestamp + 2 weeks, newStrikes);
   }
 }

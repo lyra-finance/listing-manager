@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+//SPDX-License-Identifier: ISC
+pragma solidity 0.8.16;
 
 import "forge-std/Test.sol";
 import "src/lib/VolGenerator.sol";
@@ -28,7 +28,7 @@ contract VolGeneratorAcrossBoardTest is Test {
     uint newSkew = tester.getSkewForNewBoard(1400e18, tTarget, baseIv, shortDatedBoard, longDatedBoard);
     assertApproxEqAbs(newSkew, 1.1441073881172668e18, 1e10);
 
-    // strike $1450
+    // strike $1450ah
     newSkew = tester.getSkewForNewBoard(1450e18, tTarget, baseIv, shortDatedBoard, longDatedBoard);
     assertApproxEqAbs(newSkew, 1.1165506254182895e18, 1e10);
 
