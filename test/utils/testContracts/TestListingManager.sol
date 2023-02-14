@@ -15,10 +15,10 @@ contract TestListingManager is ListingManager {
   //    optionMarket.acceptOwnership();
   //  }
 
-  function TEST_getNewBoardData(uint newExpiry, uint[] memory newStrikes)
+  function TEST_getNewBoardData(uint newExpiry)
     external
     returns (ListingManager.QueuedBoard memory)
   {
-    return _getNewBoardData(newExpiry, newStrikes);
+    return _getNewBoardData(newExpiry);
   }
 }

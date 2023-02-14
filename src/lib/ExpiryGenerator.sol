@@ -48,7 +48,7 @@ library ExpiryGenerator {
    * @param timestamp current timestamp
    * @return uint[] the return variables of a contract’s function state variable
    */
-  function getNewExpiry(uint nWeeklies, uint nMonthlies, uint timestamp, uint[] storage lastFridays)
+  function getExpiries(uint nWeeklies, uint nMonthlies, uint timestamp, uint[] storage lastFridays)
     public
     view
     returns (uint[] memory)
@@ -112,7 +112,7 @@ library ExpiryGenerator {
 
   /**
    * @notice A function that generates a list of expiries
-   * @dev Shoudl check for zeroed array indexs
+   * @dev Will contain 0 values at the end of the array
    * @param nWeeklies Number of weeklies to generate
    * @param nMonthlies Number of monthlies to generate
    * @param timestamp The current timestamp

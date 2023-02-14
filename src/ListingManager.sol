@@ -11,6 +11,8 @@ import "./lyra-interfaces/ILiquidityPool.sol";
 import "./lyra-interfaces/IOptionGreekCache.sol";
 import "./lyra-interfaces/IOptionMarket.sol";
 import "./lib/VolGenerator.sol";
+import "./lib/StrikePriceGenerator.sol";
+import "./lib/ExpiryGenerator.sol";
 
 contract ListingManager is LastFridays {
   using DecimalMath for uint;
@@ -52,8 +54,38 @@ contract ListingManager is LastFridays {
   IOptionMarket immutable optionMarket;
   // TODO: add OptionMarketGovernanceWrapper
 
-  uint MAX_SPOT_DIFF = 0.05e18;
-  uint MAX_TIME_DIFF = 3 hours;
+  uint constant MIN_EXPIRY = 2 days;
+  uint constant NUM_WEEKLIES = 8;
+  uint constant NUM_MONTHLIES = 3;
+
+
+  uint constant MAX_SCALED_MONEYNESS = 1.2 ether;
+  uint constant MAX_NUM_STRIKES = 5;
+
+  uint[] PIVOTS = [
+    1 ether,
+    2 ether,
+    5 ether,
+    10 ether,
+    20 ether,
+    50 ether,
+    100 ether,
+    200 ether,
+    500 ether,
+    1000 ether,
+    2000 ether,
+    5000 ether,
+    10000 ether,
+    20000 ether,
+    50000 ether,
+    100000 ether,
+    200000 ether,
+    500000 ether,
+    1000000 ether,
+    2000000 ether,
+    5000000 ether,
+    10000000 ether
+  ];
 
   constructor(
     IBaseExchangeAdapter _exchangeAdapter,
@@ -112,7 +144,10 @@ contract ListingManager is LastFridays {
   // Queue new strikes //
   ///////////////////////
 
-  function findAndQueueStrikesForBoard(uint boardId) external requireCircuitBreakerInactive {
+  function findAndQueueStrikesForBoard(uint boardId) external {
+    if (isCBActive()) {
+      revert("CB active");
+    }
     // given no strikes queued for the board currently (and also check things like CBs in the liquidity pool)
     // for the given board, see if any strikes can be added based on the schema
     // if so; request the skews from the libraries
@@ -123,63 +158,104 @@ contract ListingManager is LastFridays {
     // TODO: fetch data from newport contracts, fit into the format needed for the library and generate output/queue
   }
 
-  function findAndQueueNewBoard(uint newExpiry) external requireCircuitBreakerInactive {
-    // TODO: Figure out if any expiry is missing from our structure/within a max expiry
-    // info in keynote presentation - basically need to hardcode monthly expiries for the next 10-20 years - then have
-    // a process for adding weekly expiries up to 10-12 weeks
-
-    // Note: should be blocked when circuit breakers are firing
-
-    // TODO: fetch data from newport contracts, fit into the format needed for the library and generate output/queue
-  }
-
-  function executeQueuedStrikes(uint boardId) external requireCircuitBreakerInactive {
-    // Note: should be blocked (probably actually just reverted?) when circuit breakers are firing
-  }
-  function executeQueuedBoard(uint expiry) external requireCircuitBreakerInactive {
-    // Note: should be blocked (probably actually just reverted?) when circuit breakers are firing
-  }
-
-  function clearQueuedStrikes(uint boardId) external {
-    if (liquidityPool.CBTimestamp() > block.timestamp) {
-      // TODO: delete the queued strikes
+  function queueNewBoard(uint newExpiry) external {
+    if(isCBActive()) {
+      revert("CB active");
     }
+
+
+    // 1. verify if the expiry is valid (check against generator and current timestamp)
+    _requireValidExpiry(newExpiry);
+
+    // 2. Check if expiry already queued
+    if (queuedBoards[newExpiry].expiry != 0) {
+      revert("board already queued");
+    }
+
+    // 3. Fetch the QueuedBoard data
+    QueuedBoard memory newBoard = _getNewBoardData(newExpiry);
+
+    // 4. Queue the board
+//    queuedBoards[newExpiry] = newBoard;
   }
 
-  function clearQueuedBoard(uint expiry) external {
-    if (liquidityPool.CBTimestamp() > block.timestamp) {
-      // TODO: delete the queued board
+  function executeQueuedStrikes(uint boardId) external {
+    if (isCBActive()) {
+      // TODO: delete queued strike
+      return;
     }
+    // execute the queued strikes for given board if time has passed
+  }
+
+  function executeQueuedBoard(uint expiry) external {
+    if (isCBActive()) {
+      // TODO: delete queued board
+      return;
+    }
+    // execute the queued board if the required time has passed
+  }
+
+  function _requireValidExpiry(uint expiry) internal view {
+    if (expiry < block.timestamp + MIN_EXPIRY) {
+      revert("expiry too short");
+    }
+
+    uint[] memory validExpiries = ExpiryGenerator.getExpiries(NUM_WEEKLIES, NUM_MONTHLIES, block.timestamp, lastFridays);
+
+    for (uint i=0; i<validExpiries.length; ++i) {
+      if (validExpiries[i] == expiry) {
+        // matches a valid expiry. If the expiry already exists, it will be caught in _fetchSurroundingBoards()
+        return;
+      }
+    }
+    revert("expiry doesn't match format");
   }
 
   ///////////////////
   // Get new Board //
   ///////////////////
 
-  function _getNewBoardData(uint expiry, uint[] memory newStrikes) internal view returns (QueuedBoard memory newBoard) {
+  function _getNewBoardData(uint expiry) internal view returns (QueuedBoard memory newBoard) {
+    uint spotPrice = _getSpotPrice();
+
+    uint[] memory newStrikes = StrikePriceGenerator.getNewStrikes(
+      _secToAnnualized(expiry - block.timestamp),
+      spotPrice,
+      MAX_SCALED_MONEYNESS,
+      MAX_NUM_STRIKES,
+      new uint[](0),
+      PIVOTS
+    );
+//
+//    uint[] memory newStrikes = new uint[](3);
+//    newStrikes[0] = 1300 ether;
+//    newStrikes[0] = 1600 ether;
+//    newStrikes[0] = 1900 ether;
+
+
     BoardDetails[] memory boardDetails = getAllBoardDetails();
 
     (VolGenerator.Board memory shortDated, VolGenerator.Board memory longDated) =
       _fetchSurroundingBoards(boardDetails, expiry);
 
     if (shortDated.orderedSkews.length == 0) {
-      return _getQueuedBoardForEdgeBoard(expiry, newStrikes, longDated);
+      return _getQueuedBoardForEdgeBoard(spotPrice, expiry, newStrikes, longDated);
     } else if (longDated.orderedSkews.length == 0) {
-      return _getQueuedBoardForEdgeBoard(expiry, newStrikes, shortDated);
+      return _getQueuedBoardForEdgeBoard(spotPrice, expiry, newStrikes, shortDated);
     } else {
       // assume theres at least one board - _fetchSurroundingBoards will revert if there are no live boards.
-      return _getQueuedBoardForMiddleBoard(expiry, newStrikes, shortDated, longDated);
+      return _getQueuedBoardForMiddleBoard(spotPrice, expiry, newStrikes, shortDated, longDated);
     }
   }
 
   /// @notice Get the baseIv and skews for
   function _getQueuedBoardForMiddleBoard(
+    uint spotPrice,
     uint expiry,
     uint[] memory newStrikes,
     VolGenerator.Board memory shortDated,
     VolGenerator.Board memory longDated
   ) internal view returns (QueuedBoard memory newBoard) {
-    uint spotPrice = _getSpotPrice();
     uint tteAnnualised = _secToAnnualized(expiry - block.timestamp);
     newBoard.queuedTime = block.timestamp;
     newBoard.expiry = expiry;
@@ -196,7 +272,7 @@ contract ListingManager is LastFridays {
     }
   }
 
-  function _getQueuedBoardForEdgeBoard(uint expiry, uint[] memory newStrikes, VolGenerator.Board memory edgeBoard)
+  function _getQueuedBoardForEdgeBoard(uint spotPrice, uint expiry, uint[] memory newStrikes, VolGenerator.Board memory edgeBoard)
     internal
     view
     returns (QueuedBoard memory newBoard)
@@ -276,6 +352,11 @@ contract ListingManager is LastFridays {
     return (shortDated, longDated);
   }
 
+
+  /////////////////
+  // Utils/views //
+  /////////////////
+
   function _boardDetailsToVolGeneratorBoard(BoardDetails memory details)
     internal
     view
@@ -333,13 +414,6 @@ contract ListingManager is LastFridays {
     return (sec * 1e18) / uint(365 days);
   }
 
-  modifier requireCircuitBreakerInactive() {
-    if (liquidityPool.CBTimestamp() > block.timestamp) {
-      revert("CircuitBreaker live");
-    }
-    _;
-  }
-
   function quickSortStrikes(StrikeDetails[] memory arr, int left, int right) internal pure {
     // TODO: untested, just copy pasted
     int i = left;
@@ -367,5 +441,9 @@ contract ListingManager is LastFridays {
     if (i < right) {
       quickSortStrikes(arr, i, right);
     }
+  }
+
+  function isCBActive() internal returns (bool) {
+    return liquidityPool.CBTimestamp() > block.timestamp;
   }
 }

@@ -17,10 +17,10 @@ contract ExpiryGeneratorTest is Test, LastFridays {
     vm.warp(1677628800);
   }
 
-  function testGetNewExpiryBase() public {
+  function testGetExpiriesBase() public {
     uint nWeeks = 1;
     uint nMonths = 2;
-    uint[] memory expiriesReturned = ExpiryGenerator.getNewExpiry(nWeeks, nMonths, block.timestamp, lastFridays);
+    uint[] memory expiriesReturned = ExpiryGenerator.getExpiries(nWeeks, nMonths, block.timestamp, lastFridays);
     for (uint i; i < expiriesReturned.length; i++) {
       console.log(expiriesReturned[i]);
     }
@@ -37,7 +37,7 @@ contract ExpiryGeneratorTest is Test, LastFridays {
   function testGet3MonthsWorthOfWeeklies() public {
     uint nWeeks = 12;
     uint nMonths = 0;
-    uint[] memory expiriesReturned = ExpiryGenerator.getNewExpiry(nWeeks, nMonths, block.timestamp, lastFridays);
+    uint[] memory expiriesReturned = ExpiryGenerator.getExpiries(nWeeks, nMonths, block.timestamp, lastFridays);
 
     uint startTime = _getNextFriday(block.timestamp);
 
@@ -49,7 +49,7 @@ contract ExpiryGeneratorTest is Test, LastFridays {
   function testGet6MonthsOfMonthlies() public {
     uint nWeeks = 0;
     uint nMonths = 6;
-    uint[] memory expiriesReturned = ExpiryGenerator.getNewExpiry(nWeeks, nMonths, block.timestamp, lastFridays);
+    uint[] memory expiriesReturned = ExpiryGenerator.getExpiries(nWeeks, nMonths, block.timestamp, lastFridays);
 
     uint monthlyIndex = 0;
     for (uint i; i < lastFridays.length; i++) {
@@ -67,7 +67,7 @@ contract ExpiryGeneratorTest is Test, LastFridays {
   function testGet3Monthlies5Weeklies() public {
     uint nWeeks = 5;
     uint nMonths = 3;
-    uint[] memory expiriesReturned = ExpiryGenerator.getNewExpiry(nWeeks, nMonths, block.timestamp, lastFridays);
+    uint[] memory expiriesReturned = ExpiryGenerator.getExpiries(nWeeks, nMonths, block.timestamp, lastFridays);
 
     uint monthlyIndex = 0;
     for (uint i; i < lastFridays.length; i++) {
