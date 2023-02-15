@@ -22,7 +22,7 @@ contract StrikePriceTester {
     uint maxScaledMoneyness,
     uint maxNumStrikes,
     uint[] memory liveStrikes
-  ) public view returns (uint[] memory newStrikes) {
+  ) public view returns (uint[] memory newStrikes, uint numAdded) {
     return StrikePriceGenerator.getNewStrikes(tTarget, spot, maxScaledMoneyness, maxNumStrikes, liveStrikes, pivots);
   }
 
@@ -69,9 +69,10 @@ contract StrikePriceGeneratorTest is Test {
     liveStrikes[1] = 1025e18;
     liveStrikes[2] = 1050e18;
 
-    uint[] memory newStrikes = tester.getNewStrikes(_secToAnnualized(2 weeks), 1000e18, 120e16, 3, liveStrikes);
+    (uint[] memory newStrikes, uint numAdded) = tester.getNewStrikes(_secToAnnualized(2 weeks), 1000e18, 120e16, 3, liveStrikes);
 
     assertEq(newStrikes.length, 0);
+    assertEq(numAdded, 0);
   }
 
   function testDoesNotAddATMAndAssymetricAdd() public {
@@ -87,13 +88,14 @@ contract StrikePriceGeneratorTest is Test {
     liveStrikes[2] = 1050e18;
     uint spot = 1000e18;
 
-    uint[] memory newStrikes = tester.getNewStrikes(tTarget, spot, moneyness, maxStrikes, liveStrikes);
+    (uint[] memory newStrikes, uint numAdded) = tester.getNewStrikes(tTarget, spot, moneyness, maxStrikes, liveStrikes);
 
     assertEq(newStrikes[0], 975e18);
     assertEq(newStrikes[1], 950e18);
     assertEq(newStrikes[2], 925e18);
     assertEq(newStrikes[3], 1075e18);
     assertEq(newStrikes[4], 900e18);
+    assertEq(numAdded, 5);
   }
 
   function testAddsNewStrikesAndATM() public {
@@ -111,13 +113,14 @@ contract StrikePriceGeneratorTest is Test {
     liveStrikes[4] = 1100e18;
     uint spot = 1500e18;
 
-    uint[] memory newStrikes = tester.getNewStrikes(tTarget, spot, moneyness, maxStrikes, liveStrikes);
+    (uint[] memory newStrikes, uint numAdded) = tester.getNewStrikes(tTarget, spot, moneyness, maxStrikes, liveStrikes);
 
     assertEq(newStrikes[0], 1500e18);
     assertEq(newStrikes[1], 1475e18);
     assertEq(newStrikes[2], 1525e18);
     assertEq(newStrikes[3], 1450e18);
     assertEq(newStrikes[4], 1550e18);
+    assertEq(numAdded, 5);
   }
 
   //////////////////////
@@ -165,7 +168,7 @@ contract StrikePriceGeneratorTest is Test {
     liveStrikes[4] = 1100e18;
     uint spot = 1500e18;
 
-    uint[] memory newStrikes = tester.getNewStrikes(tTarget, spot, moneyness, maxStrikes, liveStrikes);
+    (uint[] memory newStrikes, uint numAdded) = tester.getNewStrikes(tTarget, spot, moneyness, maxStrikes, liveStrikes);
 
     assertEq(newStrikes[0], 1500e18);
     assertEq(newStrikes[1], 1475e18);
@@ -182,6 +185,7 @@ contract StrikePriceGeneratorTest is Test {
     assertEq(newStrikes[12], 1650e18);
     assertEq(newStrikes[13], 0);
     assertEq(newStrikes[19], 0);
+    assertEq(numAdded, 13);
   }
 
   ////////////////////

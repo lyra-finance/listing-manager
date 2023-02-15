@@ -46,7 +46,7 @@ library StrikePriceGenerator {
     uint maxNumStrikes,
     uint[] memory liveStrikes,
     uint[] storage pivots
-  ) public view returns (uint[] memory newStrikes) {
+  ) public view returns (uint[] memory newStrikes, uint numAdded) {
     // find step size and the nearest pivot
     uint nearestPivot = getLeftNearestPivot(pivots, spot);
     uint step = getStep(nearestPivot, tTarget);
@@ -58,7 +58,7 @@ library StrikePriceGenerator {
     int remainNumStrikes = int(maxNumStrikes) - int(liveStrikes.length);
     if (remainNumStrikes <= 0) {
       // if == 0, then still need to add ATM
-      return newStrikes;
+      return (newStrikes, 0);
     }
 
     // find strike range
@@ -176,9 +176,9 @@ library StrikePriceGenerator {
     uint step,
     uint minStrike,
     uint maxStrike
-  ) internal pure returns (uint[] memory newStrikes) {
+  ) internal pure returns (uint[] memory newStrikes, uint numAdded) {
     // add ATM strike first
-    uint numAdded = (liveStrikes.findInArray(atmStrike, liveStrikes.length) == -1) ? 1 : 0;
+    numAdded = (liveStrikes.findInArray(atmStrike, liveStrikes.length) == -1) ? 1 : 0;
     newStrikes = new uint[](uint(remainNumStrikes));
     if (numAdded == 1) {
       newStrikes[0] = atmStrike;
@@ -207,7 +207,7 @@ library StrikePriceGenerator {
         newStrikes[numAdded++] = nextStrike;
         remainNumStrikes--;
       } else if ((lastStrike < minStrike) && (nextStrike > maxStrike)) {
-        return newStrikes;
+        return (newStrikes, numAdded);
       }
 
       isLeft = !isLeft;
