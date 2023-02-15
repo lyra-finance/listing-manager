@@ -120,6 +120,41 @@ contract StrikePriceGeneratorTest is Test {
     assertEq(newStrikes[4], 1550e18);
   }
 
+
+  function testStopsAddingOnceOutsideRange() public {
+    // 2 week expiry setup
+    uint tTarget = _secToAnnualized(3 days);
+    uint moneyness = 120e16;
+    uint maxStrikes = 25;
+
+    // 5 existing strikes
+    uint[] memory liveStrikes = new uint[](5);
+    liveStrikes[0] = 1000e18;
+    liveStrikes[1] = 1025e18;
+    liveStrikes[2] = 1050e18;
+    liveStrikes[3] = 1075e18;
+    liveStrikes[4] = 1100e18;
+    uint spot = 1500e18;
+
+    uint[] memory newStrikes = tester.getNewStrikes(tTarget, spot, moneyness, maxStrikes, liveStrikes);
+
+    assertEq(newStrikes[0], 1500e18);
+    assertEq(newStrikes[1], 1475e18);
+    assertEq(newStrikes[2], 1525e18);
+    assertEq(newStrikes[3], 1450e18);
+    assertEq(newStrikes[4], 1550e18);
+    assertEq(newStrikes[5], 1425e18);
+    assertEq(newStrikes[6], 1575e18);
+    assertEq(newStrikes[7], 1400e18);
+    assertEq(newStrikes[8], 1600e18);
+    assertEq(newStrikes[9], 1375e18);
+    assertEq(newStrikes[10], 1625e18);
+    assertEq(newStrikes[11], 1350e18);
+    assertEq(newStrikes[12], 1650e18);
+    assertEq(newStrikes[13], 0);
+    assertEq(newStrikes[19], 0);
+  }
+
   //////////////////////
   // Get Left Nearest //
   //////////////////////
