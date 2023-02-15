@@ -38,6 +38,7 @@ library StrikePriceGenerator {
    * @param maxNumStrikes A cap on how many strikes can be in a single board.
    * @param liveStrikes Array of strikes that already exist in the board, will avoid generating them.
    * @return newStrikes The additional strikes that must be added to the board.
+   * @return numAdded Total number of added strikes as `newStrikes` may contain blank entries.
    */
   function getNewStrikes(
     uint tTarget,
@@ -168,6 +169,7 @@ library StrikePriceGenerator {
    * @param minStrike Min allowed strike based on moneyness (delta).
    * @param maxStrike Max allowed strike based on moneyness (delta).
    * @return newStrikes Additional strikes to add.
+   * @return numAdded Total number of added strikes as `newStrikes` may contain blank entries.
    */
   function _createNewStrikes(
     uint[] memory liveStrikes,

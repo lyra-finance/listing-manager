@@ -69,7 +69,8 @@ contract StrikePriceGeneratorTest is Test {
     liveStrikes[1] = 1025e18;
     liveStrikes[2] = 1050e18;
 
-    (uint[] memory newStrikes, uint numAdded) = tester.getNewStrikes(_secToAnnualized(2 weeks), 1000e18, 120e16, 3, liveStrikes);
+    (uint[] memory newStrikes, uint numAdded) =
+      tester.getNewStrikes(_secToAnnualized(2 weeks), 1000e18, 120e16, 3, liveStrikes);
 
     assertEq(newStrikes.length, 0);
     assertEq(numAdded, 0);
@@ -151,7 +152,6 @@ contract StrikePriceGeneratorTest is Test {
 
     assertEq(tester.getLeftNearestPivot(1550e18), 1000e18);
   }
-
 
   function testStopsAddingOnceOutsideRange() public {
     // 2 week expiry setup
