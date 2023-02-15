@@ -38,6 +38,7 @@ library StrikePriceGenerator {
    * @param maxNumStrikes A cap on how many strikes can be in a single board.
    * @param liveStrikes Array of strikes that already exist in the board, will avoid generating them.
    * @return newStrikes The additional strikes that must be added to the board.
+   * @return numAdded Total number of added strikes as `newStrikes` may contain blank entries.
    */
   function getNewStrikes(
     uint tTarget,
@@ -46,7 +47,7 @@ library StrikePriceGenerator {
     uint maxNumStrikes,
     uint[] memory liveStrikes,
     uint[] storage pivots
-  ) public view returns (uint[] memory newStrikes) {
+  ) public view returns (uint[] memory newStrikes, uint numAdded) {
     // find step size and the nearest pivot
     uint nearestPivot = getLeftNearestPivot(pivots, spot);
     uint step = getStep(nearestPivot, tTarget);
@@ -58,7 +59,7 @@ library StrikePriceGenerator {
     int remainNumStrikes = int(maxNumStrikes) - int(liveStrikes.length);
     if (remainNumStrikes <= 0) {
       // if == 0, then still need to add ATM
-      return newStrikes;
+      return (newStrikes, 0);
     }
 
     // find strike range
@@ -168,6 +169,7 @@ library StrikePriceGenerator {
    * @param minStrike Min allowed strike based on moneyness (delta).
    * @param maxStrike Max allowed strike based on moneyness (delta).
    * @return newStrikes Additional strikes to add.
+   * @return numAdded Total number of added strikes as `newStrikes` may contain blank entries.
    */
   function _createNewStrikes(
     uint[] memory liveStrikes,
@@ -176,9 +178,9 @@ library StrikePriceGenerator {
     uint step,
     uint minStrike,
     uint maxStrike
-  ) internal pure returns (uint[] memory newStrikes) {
+  ) internal pure returns (uint[] memory newStrikes, uint numAdded) {
     // add ATM strike first
-    uint numAdded = (liveStrikes.findInArray(atmStrike, liveStrikes.length) == -1) ? 1 : 0;
+    numAdded = (liveStrikes.findInArray(atmStrike, liveStrikes.length) == -1) ? 1 : 0;
     newStrikes = new uint[](uint(remainNumStrikes));
     if (numAdded == 1) {
       newStrikes[0] = atmStrike;
@@ -187,10 +189,12 @@ library StrikePriceGenerator {
 
     bool isLeft = true;
     uint nextStrike;
+    uint lastStrike;
     uint stepFromAtm;
     uint i = 0;
     while (remainNumStrikes > 0) {
       stepFromAtm = (1 + (i / 2)) * step;
+      lastStrike = nextStrike;
       if (isLeft) {
         // prioritize left strike
         nextStrike = (atmStrike > stepFromAtm) ? atmStrike - stepFromAtm : 0;
@@ -204,6 +208,8 @@ library StrikePriceGenerator {
       ) {
         newStrikes[numAdded++] = nextStrike;
         remainNumStrikes--;
+      } else if ((lastStrike < minStrike) && (nextStrike > maxStrike)) {
+        return (newStrikes, numAdded);
       }
 
       isLeft = !isLeft;
