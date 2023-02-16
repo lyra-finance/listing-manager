@@ -58,7 +58,8 @@ contract ListingManager is LastFridays {
   uint strikeQueueTime = 1 days;
   uint queueStaleTime = 2 days;
 
-  uint constant MIN_EXPIRY = 2 days;
+  uint constant NEW_BOARD_MIN_EXPIRY = 7 days;
+  uint constant NEW_STRIKE_MIN_EXPIRY = 2 days;
   uint constant NUM_WEEKLIES = 8;
   uint constant NUM_MONTHLIES = 3;
 
@@ -229,21 +230,26 @@ contract ListingManager is LastFridays {
   // Queue new strikes //
   ///////////////////////
 
+  // given no strikes queued for the board currently (and also check things like CBs in the liquidity pool)
+  // for the given board, see if any strikes can be added based on the schema
+  // if so; request the skews from the libraries
+  // and then add to queue
   function findAndQueueStrikesForBoard(uint boardId) external {
     if (isCBActive()) {
       revert("CB active");
     }
 
-    // TODO: check the board is valid/check expiry is not close to cutoff
+    if (queuedStrikes[boardId].boardId != 0) {
+      revert("strikes already queued");
+    }
 
-    // given no strikes queued for the board currently (and also check things like CBs in the liquidity pool)
-    // for the given board, see if any strikes can be added based on the schema
-    // if so; request the skews from the libraries
-    // and then add to queue
+    BoardDetails memory boardDetails = getBoardDetails(boardId);
 
-    // Note: should be blocked when circuit breakers are firing
+    if (boardDetails.expiry < block.timestamp + NEW_STRIKE_MIN_EXPIRY) {
+      revert("too close to expiry");
+    }
 
-    // TODO: fetch data from newport contracts, fit into the format needed for the library and generate output/queue
+    _queueNewStrikes(boardId, boardDetails);
   }
 
   function queueNewBoard(uint newExpiry) external {
@@ -251,7 +257,7 @@ contract ListingManager is LastFridays {
       revert("CB active");
     }
 
-    _requireValidExpiry(newExpiry);
+    _validateNewBoardExpiry(newExpiry);
 
     if (queuedBoards[newExpiry].expiry != 0) {
       revert("board already queued");
@@ -260,20 +266,9 @@ contract ListingManager is LastFridays {
     _queueNewBoard(newExpiry);
   }
 
-  /// @dev Internal queueBoard function, assumes the expiry is valid (but does not know if the expiry is already used)
-  function _queueNewBoard(uint newExpiry) internal {
-    (uint baseIv, StrikeToAdd[] memory strikesToAdd) = _getNewBoardData(newExpiry);
 
-    queuedBoards[newExpiry].queuedTime = block.timestamp;
-    queuedBoards[newExpiry].expiry = newExpiry;
-    queuedBoards[newExpiry].baseIv = baseIv;
-    for (uint i = 0; i < strikesToAdd.length; i++) {
-      queuedBoards[newExpiry].strikesToAdd[i] = strikesToAdd[i];
-    }
-  }
-
-  function _requireValidExpiry(uint expiry) internal view {
-    if (expiry < block.timestamp + MIN_EXPIRY) {
+  function _validateNewBoardExpiry(uint expiry) internal view {
+    if (expiry < block.timestamp + NEW_BOARD_MIN_EXPIRY) {
       revert("expiry too short");
     }
 
@@ -288,9 +283,51 @@ contract ListingManager is LastFridays {
     revert("expiry doesn't match format");
   }
 
+  ///////
+  // Add strikes to board
+  /////////
+
+  function _queueNewStrikes(uint boardId, BoardDetails memory boardDetails) internal {
+    uint spotPrice = _getSpotPrice();
+
+    VolGenerator.Board memory board = _boardDetailsToVolGeneratorBoard(boardDetails);
+
+    (uint[] memory newStrikes, uint numNewStrikes) = StrikePriceGenerator.getNewStrikes(
+      _secToAnnualized(boardDetails.expiry - block.timestamp),
+      spotPrice,
+      MAX_SCALED_MONEYNESS,
+      MAX_NUM_STRIKES,
+      board.orderedStrikePrices,
+      PIVOTS
+    );
+
+    queuedStrikes[boardId].queuedTime = block.timestamp;
+    queuedStrikes[boardId].boardId = boardId; // todo: this even necessary?
+
+    for (uint i=0; i< numNewStrikes; i++) {
+      queuedStrikes[boardId].strikesToAdd[i] = StrikeToAdd({
+        strikePrice: newStrikes[i],
+        skew: VolGenerator.getSkewForLiveBoard(newStrikes[i], board)
+      });
+    }
+  }
+
+
   ///////////////////
   // Get new Board //
   ///////////////////
+
+  /// @dev Internal queueBoard function, assumes the expiry is valid (but does not know if the expiry is already used)
+  function _queueNewBoard(uint newExpiry) internal {
+    (uint baseIv, StrikeToAdd[] memory strikesToAdd) = _getNewBoardData(newExpiry);
+
+    queuedBoards[newExpiry].queuedTime = block.timestamp;
+    queuedBoards[newExpiry].expiry = newExpiry;
+    queuedBoards[newExpiry].baseIv = baseIv;
+    for (uint i = 0; i < strikesToAdd.length; i++) {
+      queuedBoards[newExpiry].strikesToAdd[i] = strikesToAdd[i];
+    }
+  }
 
   function _getNewBoardData(uint expiry) internal view returns (uint baseIv, StrikeToAdd[] memory strikesToAdd) {
     uint spotPrice = _getSpotPrice();
@@ -473,15 +510,19 @@ contract ListingManager is LastFridays {
     uint[] memory liveBoards = optionMarket.getLiveBoards();
     boardDetails = new BoardDetails[](liveBoards.length);
     for (uint i = 0; i < liveBoards.length; ++i) {
-      (IOptionMarket.OptionBoard memory board, IOptionMarket.Strike[] memory strikes,,,) =
-        optionMarket.getBoardAndStrikeDetails(liveBoards[i]);
-      StrikeDetails[] memory strikeDetails = new StrikeDetails[](strikes.length);
-      for (uint j = 0; j < strikes.length; ++j) {
-        strikeDetails[j] = StrikeDetails({strikePrice: strikes[j].strikePrice, skew: strikes[j].skew});
-      }
-      boardDetails[i] = BoardDetails({expiry: board.expiry, baseIv: board.iv, strikes: strikeDetails});
+      boardDetails[i] = getBoardDetails(liveBoards[i]);
     }
     return boardDetails;
+  }
+
+  function getBoardDetails(uint boardId) public view returns (BoardDetails memory boardDetails) {
+    (IOptionMarket.OptionBoard memory board, IOptionMarket.Strike[] memory strikes,,,) =
+    optionMarket.getBoardAndStrikeDetails(boardId);
+    StrikeDetails[] memory strikeDetails = new StrikeDetails[](strikes.length);
+    for (uint i = 0; i < strikes.length; ++i) {
+      strikeDetails[i] = StrikeDetails({strikePrice: strikes[i].strikePrice, skew: strikes[i].skew});
+    }
+    return BoardDetails({expiry: board.expiry, baseIv: board.iv, strikes: strikeDetails});
   }
 
   function _getSpotPrice() internal view returns (uint spotPrice) {
