@@ -141,5 +141,17 @@ interface IOptionMarket {
     view
     returns (OptionBoard memory, Strike[] memory, uint[] memory, uint, uint);
 
+
   function getLiveBoards() external view returns (uint[] memory);
+
+  function addStrikeToBoard(uint boardId, uint strikePrice, uint skew) external returns(uint);
+
+  function createOptionBoard(
+    uint expiry,
+    uint baseIV,
+    uint[] memory strikePrices,
+    uint[] memory skews,
+    bool frozen
+  ) external returns (uint boardId);
+
 }

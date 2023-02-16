@@ -201,9 +201,8 @@ contract ListingManager is LastFridays {
     }
 
     QueuedBoard memory queueBoard = queuedBoards[expiry];
-
     // if it is stale (staleQueueTime), delete the entry
-    if (queueBoard + queueStaleTime > block.timestamp) {
+    if (queueBoard.queuedTime + queueStaleTime > block.timestamp) {
       revert("board stale");
     }
 
@@ -215,14 +214,19 @@ contract ListingManager is LastFridays {
     uint[] memory strikes = new uint[](queueBoard.strikesToAdd.length);
     uint[] memory skews = new uint[](queueBoard.strikesToAdd.length);
 
+    for (uint i; i < queueBoard.strikesToAdd.length; i++) {
+      strikes[i] = queueBoard.strikesToAdd[i].strikePrice;
+      skews[i] = queueBoard.strikesToAdd[i].skew;
+    }
+
     optionMarket.createOptionBoard(
       queueBoard.expiry,
       queueBoard.baseIv,
-      queueBoard.strikesToAdd,
       strikes,
       skews,
       false
     );
+
     delete queuedBoards[expiry];
   }
 
