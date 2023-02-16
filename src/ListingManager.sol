@@ -141,15 +141,22 @@ contract ListingManager is LastFridays {
 
   function vetoStrikeUpdate(uint boardId) external onlyRiskCouncil {
     // remove the QueuedStrikes for given boardId
+    delete queuedStrikes[boardId];
   }
 
   function vetoQueuedBoard(uint expiry) external onlyRiskCouncil {
     // remove the QueuedBoard for given expiry
+    delete queuedBoards[expiry];
   }
 
-  function fastForwardStrikeUpdate(uint boardId) external onlyRiskCouncil {}
+  function fastForwardStrikeUpdate(uint boardId) external onlyRiskCouncil {
+    // TODO: just change the queued time?
 
-  function fastForwardQueuedBoard(uint boardId) external onlyRiskCouncil {}
+  }
+
+  function fastForwardQueuedBoard(uint boardId) external onlyRiskCouncil {
+    // TODO: just change the queued time?
+  }
 
   modifier onlyRiskCouncil() {
     if (msg.sender != riskCouncil) {
