@@ -54,13 +54,16 @@ contract ListingManager is LastFridays {
   IOptionMarket immutable optionMarket;
   // TODO: add OptionMarketGovernanceWrapper
 
+  uint boardQueueTime = 1 days;
+  uint strikeQueueTime = 1 days;
+  uint queueStaleTime = 2 days;
+
   uint constant MIN_EXPIRY = 2 days;
   uint constant NUM_WEEKLIES = 8;
   uint constant NUM_MONTHLIES = 3;
 
-
   uint constant MAX_SCALED_MONEYNESS = 1.2 ether;
-  uint constant MAX_NUM_STRIKES = 5;
+  uint constant MAX_NUM_STRIKES = 25;
 
   uint[] PIVOTS = [
     1 ether,
@@ -112,9 +115,29 @@ contract ListingManager is LastFridays {
 
   address riskCouncil;
 
-  function setRiskCouncil(address _riskCouncil) external onlyOwner {}
+  ////
+  // onlyOwner
+  ////
 
-  // TODO: any param setting? I think it can all be hardcoded and contract replaced if that's the desire.
+  function setRiskCouncil(address _riskCouncil) external onlyOwner {
+    riskCouncil = _riskCouncil;
+  }
+
+  // TODO: any param setting? Yeah probably want to reduce the queue time only
+  function setQueueParams(uint _boardQueueTime, uint _strikeQueueTime, uint _queueStaleTime) external onlyOwner {
+    boardQueueTime = _boardQueueTime;
+    strikeQueueTime = _strikeQueueTime;
+    queueStaleTime = _queueStaleTime;
+  }
+
+  modifier onlyOwner() {
+    // TODO: inherit owned and delet this
+    _;
+  }
+
+  /////
+  // onlyRiskCouncil
+  /////
 
   function vetoStrikeUpdate(uint boardId) external onlyRiskCouncil {
     // remove the QueuedStrikes for given boardId
@@ -135,9 +158,26 @@ contract ListingManager is LastFridays {
     _;
   }
 
-  modifier onlyOwner() {
-    // TODO: inherit owned and delet this
-    _;
+  /////////////
+  // Execute //
+  /////////////
+
+  function executeQueuedStrikes(uint boardId) public {
+    if (isCBActive()) {
+      // TODO: delete queued strike
+      return;
+    }
+    // TODO: if it is stale (staleQueueTime), delete the entry
+    // TODO: execute the queued strikes for given board if time has passed
+  }
+
+  function executeQueuedBoard(uint expiry) public {
+    if (isCBActive()) {
+      // TODO: delete queued board
+      return;
+    }
+    // TODO: if it is stale (staleQueueTime), delete the entry
+    // TODO: execute the queued board if the required time has passed
   }
 
   ///////////////////////
@@ -148,6 +188,9 @@ contract ListingManager is LastFridays {
     if (isCBActive()) {
       revert("CB active");
     }
+
+    // TODO: check the board is valid/check expiry is not close to cutoff
+
     // given no strikes queued for the board currently (and also check things like CBs in the liquidity pool)
     // for the given board, see if any strikes can be added based on the schema
     // if so; request the skews from the libraries
@@ -159,40 +202,29 @@ contract ListingManager is LastFridays {
   }
 
   function queueNewBoard(uint newExpiry) external {
-    if(isCBActive()) {
+    if (isCBActive()) {
       revert("CB active");
     }
 
-
-    // 1. verify if the expiry is valid (check against generator and current timestamp)
     _requireValidExpiry(newExpiry);
 
-    // 2. Check if expiry already queued
     if (queuedBoards[newExpiry].expiry != 0) {
       revert("board already queued");
     }
 
-    // 3. Fetch the QueuedBoard data
-    QueuedBoard memory newBoard = _getNewBoardData(newExpiry);
-
-    // 4. Queue the board
-//    queuedBoards[newExpiry] = newBoard;
+    _queueNewBoard(newExpiry);
   }
 
-  function executeQueuedStrikes(uint boardId) external {
-    if (isCBActive()) {
-      // TODO: delete queued strike
-      return;
-    }
-    // execute the queued strikes for given board if time has passed
-  }
+  /// @dev Internal queueBoard function, assumes the expiry is valid (but does not know if the expiry is already used)
+  function _queueNewBoard(uint newExpiry) internal {
+    (uint baseIv, StrikeToAdd[] memory strikesToAdd) = _getNewBoardData(newExpiry);
 
-  function executeQueuedBoard(uint expiry) external {
-    if (isCBActive()) {
-      // TODO: delete queued board
-      return;
+    queuedBoards[newExpiry].queuedTime = block.timestamp;
+    queuedBoards[newExpiry].expiry = newExpiry;
+    queuedBoards[newExpiry].baseIv = baseIv;
+    for (uint i = 0; i < strikesToAdd.length; i++) {
+      queuedBoards[newExpiry].strikesToAdd[i] = strikesToAdd[i];
     }
-    // execute the queued board if the required time has passed
   }
 
   function _requireValidExpiry(uint expiry) internal view {
@@ -202,7 +234,7 @@ contract ListingManager is LastFridays {
 
     uint[] memory validExpiries = ExpiryGenerator.getExpiries(NUM_WEEKLIES, NUM_MONTHLIES, block.timestamp, lastFridays);
 
-    for (uint i=0; i<validExpiries.length; ++i) {
+    for (uint i = 0; i < validExpiries.length; ++i) {
       if (validExpiries[i] == expiry) {
         // matches a valid expiry. If the expiry already exists, it will be caught in _fetchSurroundingBoards()
         return;
@@ -215,10 +247,10 @@ contract ListingManager is LastFridays {
   // Get new Board //
   ///////////////////
 
-  function _getNewBoardData(uint expiry) internal view returns (QueuedBoard memory newBoard) {
+  function _getNewBoardData(uint expiry) internal view returns (uint baseIv, StrikeToAdd[] memory strikesToAdd) {
     uint spotPrice = _getSpotPrice();
 
-    uint[] memory newStrikes = StrikePriceGenerator.getNewStrikes(
+    (uint[] memory newStrikes, uint numNewStrikes) = StrikePriceGenerator.getNewStrikes(
       _secToAnnualized(expiry - block.timestamp),
       spotPrice,
       MAX_SCALED_MONEYNESS,
@@ -226,12 +258,6 @@ contract ListingManager is LastFridays {
       new uint[](0),
       PIVOTS
     );
-//
-//    uint[] memory newStrikes = new uint[](3);
-//    newStrikes[0] = 1300 ether;
-//    newStrikes[0] = 1600 ether;
-//    newStrikes[0] = 1900 ether;
-
 
     BoardDetails[] memory boardDetails = getAllBoardDetails();
 
@@ -239,12 +265,12 @@ contract ListingManager is LastFridays {
       _fetchSurroundingBoards(boardDetails, expiry);
 
     if (shortDated.orderedSkews.length == 0) {
-      return _getQueuedBoardForEdgeBoard(spotPrice, expiry, newStrikes, longDated);
+      return _getQueuedBoardForEdgeBoard(spotPrice, expiry, newStrikes, numNewStrikes, longDated);
     } else if (longDated.orderedSkews.length == 0) {
-      return _getQueuedBoardForEdgeBoard(spotPrice, expiry, newStrikes, shortDated);
+      return _getQueuedBoardForEdgeBoard(spotPrice, expiry, newStrikes, numNewStrikes, shortDated);
     } else {
       // assume theres at least one board - _fetchSurroundingBoards will revert if there are no live boards.
-      return _getQueuedBoardForMiddleBoard(spotPrice, expiry, newStrikes, shortDated, longDated);
+      return _getQueuedBoardForMiddleBoard(spotPrice, expiry, newStrikes, numNewStrikes, shortDated, longDated);
     }
   }
 
@@ -253,44 +279,54 @@ contract ListingManager is LastFridays {
     uint spotPrice,
     uint expiry,
     uint[] memory newStrikes,
+    uint numNewStrikes,
     VolGenerator.Board memory shortDated,
     VolGenerator.Board memory longDated
-  ) internal view returns (QueuedBoard memory newBoard) {
+  ) internal view returns (uint baseIv, StrikeToAdd[] memory strikesToAdd) {
     uint tteAnnualised = _secToAnnualized(expiry - block.timestamp);
-    newBoard.queuedTime = block.timestamp;
-    newBoard.expiry = expiry;
-    // TODO: what is this 1e18? copied from tests - assuming this is the right method
-    newBoard.baseIv = VolGenerator.getSkewForNewBoard(spotPrice, tteAnnualised, 1e18, shortDated, longDated);
-    // TODO: tests also divide baseIv by "defaultATMSkew" what is that?
 
-    newBoard.strikesToAdd = new StrikeToAdd[](newStrikes.length);
-    for (uint i = 0; i < newStrikes.length; ++i) {
-      newBoard.strikesToAdd[i] = StrikeToAdd({
+    // Note: we treat the default ATM skew as 1.0
+    // We pass in 1.0 as the baseIv... because.... TODO: why exactly?
+    baseIv = VolGenerator.getSkewForNewBoard(spotPrice, tteAnnualised, 1e18, shortDated, longDated);
+
+    strikesToAdd = new StrikeToAdd[](numNewStrikes);
+    console.log("strikes to add:", numNewStrikes);
+    for (uint i = 0; i < numNewStrikes; ++i) {
+      console.log("- strike", i);
+      console.log("-- strikePrice", newStrikes[i]);
+      strikesToAdd[i] = StrikeToAdd({
         strikePrice: newStrikes[i],
-        skew: VolGenerator.getSkewForNewBoard(newStrikes[i], tteAnnualised, newBoard.baseIv, shortDated, longDated)
+        skew: VolGenerator.getSkewForNewBoard(newStrikes[i], tteAnnualised, baseIv, shortDated, longDated)
       });
+      console.log("-- skew", strikesToAdd[i].skew);
     }
   }
 
-  function _getQueuedBoardForEdgeBoard(uint spotPrice, uint expiry, uint[] memory newStrikes, VolGenerator.Board memory edgeBoard)
-    internal
-    view
-    returns (QueuedBoard memory newBoard)
-  {
+  function _getQueuedBoardForEdgeBoard(
+    uint spotPrice,
+    uint expiry,
+    uint[] memory newStrikes,
+    uint numNewStrikes,
+    VolGenerator.Board memory edgeBoard
+  ) internal view returns (uint baseIv, StrikeToAdd[] memory strikesToAdd) {
     uint spotPrice = _getSpotPrice();
     uint tteAnnualised = _secToAnnualized(expiry - block.timestamp);
-    newBoard.queuedTime = block.timestamp;
-    newBoard.expiry = expiry;
-    // TODO: what is this 1e18? copied from tests - assuming this is the right method
-    newBoard.baseIv = VolGenerator.getSkewForNewBoard(spotPrice, tteAnnualised, 1e18, spotPrice, edgeBoard);
-    // TODO: tests also divide baseIv by "defaultATMSkew" what is that?
 
-    newBoard.strikesToAdd = new StrikeToAdd[](newStrikes.length);
-    for (uint i = 0; i < newStrikes.length; ++i) {
-      newBoard.strikesToAdd[i] = StrikeToAdd({
+    // Note: we treat the default ATM skew as 1.0
+    // We pass in 1.0 as the baseIv... because.... TODO: why exactly?
+    baseIv = VolGenerator.getSkewForNewBoard(spotPrice, tteAnnualised, 1e18, spotPrice, edgeBoard);
+
+    strikesToAdd = new StrikeToAdd[](numNewStrikes);
+
+    console.log("strikes to add:", numNewStrikes);
+    for (uint i = 0; i < numNewStrikes; ++i) {
+      console.log("- strike", i);
+      console.log("-- strikePrice", newStrikes[i]);
+      strikesToAdd[i] = StrikeToAdd({
         strikePrice: newStrikes[i],
-        skew: VolGenerator.getSkewForNewBoard(newStrikes[i], tteAnnualised, newBoard.baseIv, spotPrice, edgeBoard)
+        skew: VolGenerator.getSkewForNewBoard(newStrikes[i], tteAnnualised, baseIv, spotPrice, edgeBoard)
       });
+      console.log("-- skew", strikesToAdd[i].skew);
     }
   }
 
@@ -352,7 +388,6 @@ contract ListingManager is LastFridays {
     return (shortDated, longDated);
   }
 
-
   /////////////////
   // Utils/views //
   /////////////////
@@ -363,6 +398,7 @@ contract ListingManager is LastFridays {
     returns (VolGenerator.Board memory)
   {
     /**
+     * TODO:
      * Tests:
      * 1. pass in a board with unsorted strikes, make sure output is correct
      * 2. board with no strikes ?
@@ -375,7 +411,6 @@ contract ListingManager is LastFridays {
     uint[] memory orderedSkews = new uint[](numStrikes);
 
     for (uint i = 0; i < numStrikes; i++) {
-      console.log("details.strikes[i].skew", details.strikes[i].skew);
       orderedStrikePrices[i] = details.strikes[i].strikePrice;
       orderedSkews[i] = details.strikes[i].skew;
     }
@@ -390,7 +425,6 @@ contract ListingManager is LastFridays {
   }
 
   function getAllBoardDetails() public view returns (BoardDetails[] memory boardDetails) {
-    console.log("Getting all board details");
     uint[] memory liveBoards = optionMarket.getLiveBoards();
     boardDetails = new BoardDetails[](liveBoards.length);
     for (uint i = 0; i < liveBoards.length; ++i) {

@@ -13,8 +13,7 @@ contract ListingManagerTest is ListingManagerTestBase {
   ///////////
 
   function testGetNewBoardData() public {
-    console.log("hi");
-
-    ListingManager.QueuedBoard memory res = listingManager.TEST_getNewBoardData(block.timestamp + 2 weeks);
+    (uint baseIv, TestListingManager.StrikeToAdd[] memory strikesToAdd) =
+      listingManager.TEST_getNewBoardData(block.timestamp + 2 weeks);
   }
 }
