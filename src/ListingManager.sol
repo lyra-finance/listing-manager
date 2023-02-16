@@ -164,20 +164,58 @@ contract ListingManager is LastFridays {
 
   function executeQueuedStrikes(uint boardId) public {
     if (isCBActive()) {
-      // TODO: delete queued strike
+      delete queuedStrikes[boardId];
       return;
     }
     // TODO: if it is stale (staleQueueTime), delete the entry
+    if (queuedStrikes[boardId].queuedTime + queueStaleTime > block.timestamp) {
+      revert("strike stale");
+    }
+
     // TODO: execute the queued strikes for given board if time has passed
+    if (block.timestamp < queuedStrikes[boardId].queuedTime + strikeQueueTime) {
+      revert("too early");
+    }
+
+    for (uint i; i < queuedStrikes[boardId].strikesToAdd.length; i++) {
+      optionMarket.addStrikeToBoard(
+        boardId,
+        queuedStrikes[boardId].strikesToAdd[0].strikePrice,
+        queuedStrikes[boardId].strikesToAdd[0].skew);
+    }
+    delete queuedStrikes[boardId];
   }
 
   function executeQueuedBoard(uint expiry) public {
     if (isCBActive()) {
-      // TODO: delete queued board
+      delete queuedBoards[expiry];
       return;
     }
-    // TODO: if it is stale (staleQueueTime), delete the entry
-    // TODO: execute the queued board if the required time has passed
+
+    QueuedBoard memory queueBoard = queuedBoards[expiry];
+
+    // if it is stale (staleQueueTime), delete the entry
+    if (queueBoard + queueStaleTime > block.timestamp) {
+      revert("board stale");
+    }
+
+    // execute the queued board if the required time has passed
+    if (block.timestamp < queueBoard.queuedTime + boardQueueTime) {
+      revert("too early");
+    }
+
+    uint[] memory strikes = new uint[](queueBoard.strikesToAdd.length);
+    uint[] memory skews = new uint[](queueBoard.strikesToAdd.length);
+
+    optionMarket.createOptionBoard(
+      queueBoard.expiry,
+      queueBoard.baseIv,
+      queueBoard.strikesToAdd,
+      strikes,
+      skews,
+      false
+    );
+    delete queuedBoards[expiry];
   }
 
   ///////////////////////
