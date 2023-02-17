@@ -175,7 +175,7 @@ contract ListingManager is LastFridays {
       delete queuedStrikes[boardId];
       return;
     }
-    
+
     if (queuedStrikes[boardId].queuedTime + queueStaleTime > block.timestamp) {
       revert("strike stale");
     }
@@ -207,7 +207,8 @@ contract ListingManager is LastFridays {
   }
 
   function _executeQueuedBoard(uint expiry) internal {
-     uint[] memory strikes = new uint[](queueBoard.strikesToAdd.length);
+    QueuedBoard memory queueBoard = queuedBoards[expiry];
+    uint[] memory strikes = new uint[](queueBoard.strikesToAdd.length);
     uint[] memory skews = new uint[](queueBoard.strikesToAdd.length);
 
     for (uint i; i < queueBoard.strikesToAdd.length; i++) {
@@ -227,6 +228,7 @@ contract ListingManager is LastFridays {
   }
 
   function _executeQueuedStrikes(uint boardId) internal {
+    QueuedStrikes memory queueStrikes = queuedStrikes[boardId];
     for (uint i; i < queuedStrikes[boardId].strikesToAdd.length; i++) {
       optionMarket.addStrikeToBoard(
         boardId,
