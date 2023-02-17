@@ -17,8 +17,10 @@ contract TestListingManager is ListingManager {
 
   function TEST_getNewBoardData(uint newExpiry)
     external
-    returns (uint baseIv, ListingManager.StrikeToAdd[] memory strikesToAdd)
+    returns (uint baseIv, ListingManager.StrikeToAdd[] memory boards)
   {
     return _getNewBoardData(newExpiry);
   }
+
+
 }

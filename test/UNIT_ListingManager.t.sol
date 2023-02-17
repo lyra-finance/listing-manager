@@ -13,8 +13,9 @@ contract ListingManagerTest is ListingManagerTestBase {
   ///////////
 
   function testGetNewBoardData() public {
-    (uint baseIv, TestListingManager.StrikeToAdd[] memory strikesToAdd) =
-      listingManager.TEST_getNewBoardData(block.timestamp + 2 weeks);
+    (, ListingManager.StrikeToAdd[] memory res) = listingManager.TEST_getNewBoardData(block.timestamp + 2 weeks);
+
+  
   }
 
   function testQueueStrikesForBoard() public {

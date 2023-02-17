@@ -31,6 +31,18 @@ contract MockOptionMarket is IOptionMarket {
   function getLiveBoards() external pure override returns (uint[] memory boardIds) {
     return (boardIds);
   }
+
+  function addStrikeToBoard(uint boardId, uint strikePrice, uint skew) external pure returns (uint strikeId) {
+    return strikeId;
+  }
+
+  function createOptionBoard( uint expiry,
+    uint baseIV,
+    uint[] memory strikePrices,
+    uint[] memory skews,
+    bool frozen) external pure returns (uint boardId) {
+    return boardId;
+  }
 }
 
 contract MockOptionGreekCache is IOptionGreekCache {

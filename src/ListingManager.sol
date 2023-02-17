@@ -142,15 +142,22 @@ contract ListingManager is LastFridays {
 
   function vetoStrikeUpdate(uint boardId) external onlyRiskCouncil {
     // remove the QueuedStrikes for given boardId
+    delete queuedStrikes[boardId];
   }
 
   function vetoQueuedBoard(uint expiry) external onlyRiskCouncil {
     // remove the QueuedBoard for given expiry
+    delete queuedBoards[expiry];
   }
 
-  function fastForwardStrikeUpdate(uint boardId) external onlyRiskCouncil {}
+  function fastForwardStrikeUpdate(uint boardId) external onlyRiskCouncil {
+    // TODO: just change the queued time?
+    _executeQueuedStrikes(boardId);
+  }
 
-  function fastForwardQueuedBoard(uint boardId) external onlyRiskCouncil {}
+  function fastForwardQueuedBoard(uint expiry) external onlyRiskCouncil {
+    _executeQueuedBoard(expiry);
+  }
 
   modifier onlyRiskCouncil() {
     if (msg.sender != riskCouncil) {
@@ -165,20 +172,70 @@ contract ListingManager is LastFridays {
 
   function executeQueuedStrikes(uint boardId) public {
     if (isCBActive()) {
-      // TODO: delete queued strike
+      delete queuedStrikes[boardId];
       return;
     }
-    // TODO: if it is stale (staleQueueTime), delete the entry
-    // TODO: execute the queued strikes for given board if time has passed
+
+    if (queuedStrikes[boardId].queuedTime + queueStaleTime > block.timestamp) {
+      revert("strike stale");
+    }
+
+    if (block.timestamp < queuedStrikes[boardId].queuedTime + strikeQueueTime) {
+      revert("too early");
+    }
+    _executeQueuedStrikes(boardId);
   }
 
   function executeQueuedBoard(uint expiry) public {
     if (isCBActive()) {
-      // TODO: delete queued board
+      delete queuedBoards[expiry];
       return;
     }
-    // TODO: if it is stale (staleQueueTime), delete the entry
-    // TODO: execute the queued board if the required time has passed
+
+    QueuedBoard memory queueBoard = queuedBoards[expiry];
+    // if it is stale (staleQueueTime), delete the entry
+    if (queueBoard.queuedTime + queueStaleTime > block.timestamp) {
+      revert("board stale");
+    }
+
+    // execute the queued board if the required time has passed
+    if (block.timestamp < queueBoard.queuedTime + boardQueueTime) {
+      revert("too early");
+    }
+
+    _executeQueuedBoard(expiry);
+  }
+
+  function _executeQueuedBoard(uint expiry) internal {
+    QueuedBoard memory queueBoard = queuedBoards[expiry];
+    uint[] memory strikes = new uint[](queueBoard.strikesToAdd.length);
+    uint[] memory skews = new uint[](queueBoard.strikesToAdd.length);
+
+    for (uint i; i < queueBoard.strikesToAdd.length; i++) {
+      strikes[i] = queueBoard.strikesToAdd[i].strikePrice;
+      skews[i] = queueBoard.strikesToAdd[i].skew;
+    }
+
+    optionMarket.createOptionBoard(
+      queueBoard.expiry,
+      queueBoard.baseIv,
+      strikes,
+      skews,
+      false
+    );
+
+    delete queuedBoards[expiry];
+  }
+
+  function _executeQueuedStrikes(uint boardId) internal {
+    QueuedStrikes memory queueStrikes = queuedStrikes[boardId];
+    for (uint i; i < queuedStrikes[boardId].strikesToAdd.length; i++) {
+      optionMarket.addStrikeToBoard(
+        boardId,
+        queuedStrikes[boardId].strikesToAdd[0].strikePrice,
+        queuedStrikes[boardId].strikesToAdd[0].skew);
+    }
+    delete queuedStrikes[boardId];
   }
 
   ///////////////////////
