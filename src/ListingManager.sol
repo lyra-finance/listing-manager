@@ -221,7 +221,6 @@ contract ListingManager is LastFridays {
     _queueNewBoard(newExpiry);
   }
 
-
   function _validateNewBoardExpiry(uint expiry) internal view {
     if (expiry < block.timestamp + NEW_BOARD_MIN_EXPIRY) {
       revert("expiry too short");
@@ -257,16 +256,14 @@ contract ListingManager is LastFridays {
     );
 
     queuedStrikes[boardId].queuedTime = block.timestamp;
-    queuedStrikes[boardId].boardId = boardId; // todo: this even necessary?
+    queuedStrikes[boardId].boardId = boardId; // todo: is boardId even necessary?
 
-    for (uint i=0; i< numNewStrikes; i++) {
-      queuedStrikes[boardId].strikesToAdd[i] = StrikeToAdd({
-        strikePrice: newStrikes[i],
-        skew: VolGenerator.getSkewForLiveBoard(newStrikes[i], board)
-      });
+    for (uint i = 0; i < numNewStrikes; i++) {
+      queuedStrikes[boardId].strikesToAdd.push(
+        StrikeToAdd({strikePrice: newStrikes[i], skew: VolGenerator.getSkewForLiveBoard(newStrikes[i], board)})
+      );
     }
   }
-
 
   ///////////////////
   // Get new Board //
@@ -280,7 +277,7 @@ contract ListingManager is LastFridays {
     queuedBoards[newExpiry].expiry = newExpiry;
     queuedBoards[newExpiry].baseIv = baseIv;
     for (uint i = 0; i < strikesToAdd.length; i++) {
-      queuedBoards[newExpiry].strikesToAdd[i] = strikesToAdd[i];
+      queuedBoards[newExpiry].strikesToAdd.push(strikesToAdd[i]);
     }
   }
 
@@ -327,15 +324,11 @@ contract ListingManager is LastFridays {
     baseIv = VolGenerator.getSkewForNewBoard(spotPrice, tteAnnualised, 1e18, shortDated, longDated);
 
     strikesToAdd = new StrikeToAdd[](numNewStrikes);
-    console.log("strikes to add:", numNewStrikes);
     for (uint i = 0; i < numNewStrikes; ++i) {
-      console.log("- strike", i);
-      console.log("-- strikePrice", newStrikes[i]);
       strikesToAdd[i] = StrikeToAdd({
         strikePrice: newStrikes[i],
         skew: VolGenerator.getSkewForNewBoard(newStrikes[i], tteAnnualised, baseIv, shortDated, longDated)
       });
-      console.log("-- skew", strikesToAdd[i].skew);
     }
   }
 
@@ -355,15 +348,11 @@ contract ListingManager is LastFridays {
 
     strikesToAdd = new StrikeToAdd[](numNewStrikes);
 
-    console.log("strikes to add:", numNewStrikes);
     for (uint i = 0; i < numNewStrikes; ++i) {
-      console.log("- strike", i);
-      console.log("-- strikePrice", newStrikes[i]);
       strikesToAdd[i] = StrikeToAdd({
         strikePrice: newStrikes[i],
         skew: VolGenerator.getSkewForNewBoard(newStrikes[i], tteAnnualised, baseIv, spotPrice, edgeBoard)
       });
-      console.log("-- skew", strikesToAdd[i].skew);
     }
   }
 
@@ -472,7 +461,7 @@ contract ListingManager is LastFridays {
 
   function getBoardDetails(uint boardId) public view returns (BoardDetails memory boardDetails) {
     (IOptionMarket.OptionBoard memory board, IOptionMarket.Strike[] memory strikes,,,) =
-    optionMarket.getBoardAndStrikeDetails(boardId);
+      optionMarket.getBoardAndStrikeDetails(boardId);
     StrikeDetails[] memory strikeDetails = new StrikeDetails[](strikes.length);
     for (uint i = 0; i < strikes.length; ++i) {
       strikeDetails[i] = StrikeDetails({strikePrice: strikes[i].strikePrice, skew: strikes[i].skew});
