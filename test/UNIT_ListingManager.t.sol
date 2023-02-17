@@ -19,5 +19,8 @@ contract ListingManagerTest is ListingManagerTestBase {
     console.log(res.expiry);
     console.log(res.baseIv);
   }
-  
+
+  function testQueueStrikesForBoard() public {
+    listingManager.findAndQueueStrikesForBoard(1);
+  }
 }
