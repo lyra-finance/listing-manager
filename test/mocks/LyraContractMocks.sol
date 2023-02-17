@@ -43,8 +43,6 @@ contract MockOptionMarket is IOptionMarket {
     bool frozen) external pure returns (uint boardId) {
     return boardId;
   }
-
-
 }
 
 contract MockOptionGreekCache is IOptionGreekCache {

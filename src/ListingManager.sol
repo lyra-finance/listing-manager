@@ -152,11 +152,11 @@ contract ListingManager is LastFridays {
 
   function fastForwardStrikeUpdate(uint boardId) external onlyRiskCouncil {
     // TODO: just change the queued time?
-
+    _executeQueuedStrikes(boardId);
   }
 
-  function fastForwardQueuedBoard(uint boardId) external onlyRiskCouncil {
-    // TODO: just change the queued time?
+  function fastForwardQueuedBoard(uint expiry) external onlyRiskCouncil {
+    _executeQueuedBoard(expiry);
   }
 
   modifier onlyRiskCouncil() {
@@ -175,23 +175,15 @@ contract ListingManager is LastFridays {
       delete queuedStrikes[boardId];
       return;
     }
-    // TODO: if it is stale (staleQueueTime), delete the entry
+    
     if (queuedStrikes[boardId].queuedTime + queueStaleTime > block.timestamp) {
       revert("strike stale");
     }
 
-    // TODO: execute the queued strikes for given board if time has passed
     if (block.timestamp < queuedStrikes[boardId].queuedTime + strikeQueueTime) {
       revert("too early");
     }
-
-    for (uint i; i < queuedStrikes[boardId].strikesToAdd.length; i++) {
-      optionMarket.addStrikeToBoard(
-        boardId,
-        queuedStrikes[boardId].strikesToAdd[0].strikePrice,
-        queuedStrikes[boardId].strikesToAdd[0].skew);
-    }
-    delete queuedStrikes[boardId];
+    _executeQueuedStrikes(boardId);
   }
 
   function executeQueuedBoard(uint expiry) public {
@@ -211,7 +203,11 @@ contract ListingManager is LastFridays {
       revert("too early");
     }
 
-    uint[] memory strikes = new uint[](queueBoard.strikesToAdd.length);
+    _executeQueuedBoard(expiry);
+  }
+
+  function _executeQueuedBoard(uint expiry) internal {
+     uint[] memory strikes = new uint[](queueBoard.strikesToAdd.length);
     uint[] memory skews = new uint[](queueBoard.strikesToAdd.length);
 
     for (uint i; i < queueBoard.strikesToAdd.length; i++) {
@@ -228,6 +224,16 @@ contract ListingManager is LastFridays {
     );
 
     delete queuedBoards[expiry];
+  }
+
+  function _executeQueuedStrikes(uint boardId) internal {
+    for (uint i; i < queuedStrikes[boardId].strikesToAdd.length; i++) {
+      optionMarket.addStrikeToBoard(
+        boardId,
+        queuedStrikes[boardId].strikesToAdd[0].strikePrice,
+        queuedStrikes[boardId].strikesToAdd[0].skew);
+    }
+    delete queuedStrikes[boardId];
   }
 
   ///////////////////////
