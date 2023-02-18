@@ -41,13 +41,15 @@ library ExpiryGenerator {
     expiries = new uint[](nWeeklies + nMonthlies);
     uint weeklyExpiry = getNextFriday(timestamp);
 
-    for (uint i = 0; i < nWeeklies; i++) {
-      expiries[i] = weeklyExpiry;
+    uint insertIndex = 0;
+    for (; insertIndex < nWeeklies; ++insertIndex) {
+      expiries[insertIndex] = weeklyExpiry;
       weeklyExpiry += 7 days;
     }
 
+    // TODO: consider if we want to start from last weekly seen and get _next_ 3 monthlies
     uint monthlyIndex = Arrays.findUpperBound(monthlyExpiries, timestamp);
-    uint insertIndex = nWeeklies;
+
     // if there is more than 1 monthly add to expiries array
     for (uint i = 0; i < nMonthlies; i++) {
       uint monthlyStamp = monthlyExpiries[monthlyIndex + i];
@@ -57,7 +59,7 @@ library ExpiryGenerator {
         continue;
       }
       expiries[insertIndex] = monthlyStamp;
-      insertIndex++;
+      ++insertIndex;
     }
 
     UnorderedMemoryArray.trimArray(expiries, insertIndex);
@@ -80,4 +82,3 @@ library ExpiryGenerator {
     return timestamp - ((timestamp - MOD_OFFSET) % 7 days) + 7 days;
   }
 }
-

@@ -5,9 +5,9 @@ import "openzeppelin/utils/Arrays.sol";
 import "src/lib/ExpiryGenerator.sol";
 import "forge-std/Test.sol";
 import "forge-std/StdJson.sol";
-import "../../src/LastFridays.sol";
+import "../../src/ListingManagerLibrarySettings.sol";
 
-contract ExpiryGeneratorTest is Test, LastFridays {
+contract ExpiryGeneratorTest is Test, ListingManagerLibrarySettings {
   using stdJson for string;
 
   uint[] liveExpiries;
@@ -20,7 +20,7 @@ contract ExpiryGeneratorTest is Test, LastFridays {
   function testGetExpiriesBase() public {
     uint nWeeks = 1;
     uint nMonths = 2;
-    uint[] memory expiriesReturned = ExpiryGenerator.getExpiries(nWeeks, nMonths, block.timestamp, lastFridays);
+    uint[] memory expiriesReturned = ExpiryGenerator.getExpiries(nWeeks, nMonths, block.timestamp, LAST_FRIDAYS);
     for (uint i; i < expiriesReturned.length; i++) {
       console.log(expiriesReturned[i]);
     }
@@ -37,7 +37,7 @@ contract ExpiryGeneratorTest is Test, LastFridays {
   function testGet3MonthsWorthOfWeeklies() public {
     uint nWeeks = 12;
     uint nMonths = 0;
-    uint[] memory expiriesReturned = ExpiryGenerator.getExpiries(nWeeks, nMonths, block.timestamp, lastFridays);
+    uint[] memory expiriesReturned = ExpiryGenerator.getExpiries(nWeeks, nMonths, block.timestamp, LAST_FRIDAYS);
 
     uint startTime = ExpiryGenerator.getNextFriday(block.timestamp);
 
@@ -49,29 +49,29 @@ contract ExpiryGeneratorTest is Test, LastFridays {
   function testGet6MonthsOfMonthlies() public {
     uint nWeeks = 0;
     uint nMonths = 6;
-    uint[] memory expiriesReturned = ExpiryGenerator.getExpiries(nWeeks, nMonths, block.timestamp, lastFridays);
+    uint[] memory expiriesReturned = ExpiryGenerator.getExpiries(nWeeks, nMonths, block.timestamp, LAST_FRIDAYS);
 
     uint monthlyIndex = 0;
-    for (uint i; i < lastFridays.length; i++) {
-      if (lastFridays[i] > block.timestamp) {
+    for (uint i; i < LAST_FRIDAYS.length; i++) {
+      if (LAST_FRIDAYS[i] > block.timestamp) {
         monthlyIndex = i;
         break;
       }
     }
 
     for (uint i; i < expiriesReturned.length; i++) {
-      assertEq(expiriesReturned[i], lastFridays[monthlyIndex + i]);
+      assertEq(expiriesReturned[i], LAST_FRIDAYS[monthlyIndex + i]);
     }
   }
 
   function testGet3Monthlies5Weeklies() public {
     uint nWeeks = 5;
     uint nMonths = 3;
-    uint[] memory expiriesReturned = ExpiryGenerator.getExpiries(nWeeks, nMonths, block.timestamp, lastFridays);
+    uint[] memory expiriesReturned = ExpiryGenerator.getExpiries(nWeeks, nMonths, block.timestamp, LAST_FRIDAYS);
 
     uint monthlyIndex = 0;
-    for (uint i; i < lastFridays.length; i++) {
-      if (lastFridays[i] > block.timestamp) {
+    for (uint i; i < LAST_FRIDAYS.length; i++) {
+      if (LAST_FRIDAYS[i] > block.timestamp) {
         monthlyIndex = i;
         break;
       }
@@ -86,7 +86,7 @@ contract ExpiryGeneratorTest is Test, LastFridays {
 
     for (uint i; i < nMonths; i++) {
       // should contain every friday 5 weeks out and 2 monthlies out
-      assertEq(contains(expiriesReturned, lastFridays[monthlyIndex + i]), true);
+      assertEq(contains(expiriesReturned, LAST_FRIDAYS[monthlyIndex + i]), true);
     }
 
     // print expiriesReturned
@@ -101,7 +101,7 @@ contract ExpiryGeneratorTest is Test, LastFridays {
   //    liveExpiries.push(1680249600);
   //    liveExpiries.push(1682668800);
   //    uint[] memory expiriesReturned =
-  //      ExpiryGenerator.getNextExpiries(nWeeks, nMonths, block.timestamp, lastFridays, liveExpiries);
+  //      ExpiryGenerator.getNextExpiries(nWeeks, nMonths, block.timestamp, LAST_FRIDAYS, liveExpiries);
   //
   //    for (uint i; i < liveExpiries.length; i++) {
   //      assertEq(contains(expiriesReturned, liveExpiries[i]), false);
@@ -119,7 +119,7 @@ contract ExpiryGeneratorTest is Test, LastFridays {
   //    liveExpiries.push(1682668800);
   //    liveExpiries.push(1685254400);
   //    uint[] memory expiriesReturned =
-  //      ExpiryGenerator.getNextExpiries(nWeeks, nMonths, block.timestamp, lastFridays, liveExpiries);
+  //      ExpiryGenerator.getNextExpiries(nWeeks, nMonths, block.timestamp, LAST_FRIDAYS, liveExpiries);
   //
   //    for (uint i; i < liveExpiries.length; i++) {
   //      assertEq(contains(expiriesReturned, liveExpiries[i]), false);
@@ -138,6 +138,7 @@ contract ExpiryGeneratorTest is Test, LastFridays {
   //      console.log(expiriesReturned[i]);
   //    }
   //  }
+
   function testGetNextFriday() public {
     assertEq(ExpiryGenerator.getNextFriday(1676607004), 1676620800);
     assertEq(ExpiryGenerator.getNextFriday(1676620799), 1676620800);

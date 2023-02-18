@@ -5,6 +5,7 @@ import "../../src/lyra-interfaces/IBaseExchangeAdapter.sol";
 import "../../src/lyra-interfaces/ILiquidityPool.sol";
 import "../../src/lyra-interfaces/IOptionGreekCache.sol";
 import "../../src/lyra-interfaces/IOptionMarket.sol";
+import "../../src/lyra-interfaces/IOptionMarketGovernanceWrapper.sol";
 
 contract MockBaseExchangeAdapter is IBaseExchangeAdapter {
   function getSpotPriceForMarket(address, PriceType) external pure override returns (uint spot) {
@@ -31,18 +32,6 @@ contract MockOptionMarket is IOptionMarket {
   function getLiveBoards() external pure override returns (uint[] memory boardIds) {
     return (boardIds);
   }
-
-  function addStrikeToBoard(uint boardId, uint strikePrice, uint skew) external pure returns (uint strikeId) {
-    return strikeId;
-  }
-
-  function createOptionBoard( uint expiry,
-    uint baseIV,
-    uint[] memory strikePrices,
-    uint[] memory skews,
-    bool frozen) external pure returns (uint boardId) {
-    return boardId;
-  }
 }
 
 contract MockOptionGreekCache is IOptionGreekCache {
@@ -58,5 +47,25 @@ contract MockOptionGreekCache is IOptionGreekCache {
 contract MockLiquidityPool is ILiquidityPool {
   function CBTimestamp() external pure override returns (uint cbTimestamp) {
     return cbTimestamp;
+  }
+}
+
+contract MockOptionMarketGovernanceWrapper is IOptionMarketGovernanceWrapper {
+  function addStrikeToBoard(IOptionMarket market, uint boardId, uint strikePrice, uint skew)
+    external
+    returns (uint strikeId)
+  {
+    return strikeId;
+  }
+
+  function createOptionBoard(
+    IOptionMarket market,
+    uint expiry,
+    uint baseIV,
+    uint[] memory strikePrices,
+    uint[] memory skews,
+    bool frozen
+  ) external returns (uint boardId) {
+    return boardId;
   }
 }

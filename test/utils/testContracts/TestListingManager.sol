@@ -8,12 +8,9 @@ contract TestListingManager is ListingManager {
     IBaseExchangeAdapter _exchangeAdapter,
     ILiquidityPool _liquidityPool,
     IOptionGreekCache _optionGreekCache,
-    IOptionMarket _optionMarket
-  ) ListingManager(_exchangeAdapter, _liquidityPool, _optionGreekCache, _optionMarket) {}
-  //
-  //  function TEST_takeMarketOwnership() external {
-  //    optionMarket.acceptOwnership();
-  //  }
+    IOptionMarket _optionMarket,
+    IOptionMarketGovernanceWrapper _governanceWrapper
+  ) ListingManager(_exchangeAdapter, _liquidityPool, _optionGreekCache, _optionMarket, _governanceWrapper) {}
 
   function TEST_getNewBoardData(uint newExpiry)
     external
@@ -22,5 +19,11 @@ contract TestListingManager is ListingManager {
     return _getNewBoardData(newExpiry);
   }
 
-
+  function TEST_fetchSurroundingBoards(BoardDetails[] memory boardDetails, uint expiry)
+    external
+    view
+    returns (VolGenerator.Board memory shortDated, VolGenerator.Board memory longDated)
+  {
+    return _fetchSurroundingBoards(boardDetails, expiry);
+  }
 }
