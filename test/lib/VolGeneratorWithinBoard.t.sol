@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+//SPDX-License-Identifier: ISC
+pragma solidity 0.8.16;
 
 import "forge-std/Test.sol";
 import "src/lib/VolGenerator.sol";
@@ -21,7 +21,7 @@ contract VolGeneratorWithinBoardTest is Test {
     });
 
     // Strike: $1500
-    vm.expectRevert();
+    vm.expectRevert(VolGenerator.VG_NoStrikes.selector);
     tester.getSkewForLiveBoard(1500 * 1e18, liveBoard);
   }
 

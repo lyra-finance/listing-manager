@@ -1,5 +1,41 @@
-{
-  "fridays" : [
+//SPDX-License-Identifier: ISC
+pragma solidity 0.8.16;
+
+abstract contract ListingManagerLibrarySettings {
+  uint constant NEW_BOARD_MIN_EXPIRY = 7 days;
+  uint constant NEW_STRIKE_MIN_EXPIRY = 2 days;
+  uint constant NUM_WEEKLIES = 3;
+  uint constant NUM_MONTHLIES = 3;
+
+  uint constant MAX_SCALED_MONEYNESS = 1.2 ether;
+  uint constant MAX_NUM_STRIKES = 25;
+
+  uint[] PIVOTS = [
+    1 ether,
+    2 ether,
+    5 ether,
+    10 ether,
+    20 ether,
+    50 ether,
+    100 ether,
+    200 ether,
+    500 ether,
+    1000 ether,
+    2000 ether,
+    5000 ether,
+    10000 ether,
+    20000 ether,
+    50000 ether,
+    100000 ether,
+    200000 ether,
+    500000 ether,
+    1000000 ether,
+    2000000 ether,
+    5000000 ether,
+    10000000 ether
+  ];
+
+  uint[] LAST_FRIDAYS = [
     1674806400,
     1677225600,
     1680249600,
@@ -255,32 +291,6 @@
     2337667200,
     2340086400,
     2342505600,
-    2345529600,
-    2347948800,
-    2350368000,
-    2353392000,
-    2355811200,
-    2358835200,
-    2361254400,
-    2363673600,
-    2366697600,
-    2369116800,
-    2371536000,
-    2374560000,
-    2376979200,
-    2379398400,
-    2382422400,
-    2384841600,
-    2387260800,
-    2390284800,
-    2392704000,
-    2395123200,
-    2398147200,
-    2400566400,
-    2402985600,
-    2406009600,
-    2408428800,
-    2410848000,
-    2413872000
-  ]
+    2345529600
+  ];
 }
