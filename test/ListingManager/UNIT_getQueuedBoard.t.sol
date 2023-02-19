@@ -40,36 +40,36 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
   // _extrapolateBoard //
   ///////////////////////
 
-  function testExtrapolateBoardShortExpiryShorterBoard() {
+  function testExtrapolateBoardShortExpiryShorterBoard() public {
     // TODO: extrapolating a 1 day expiry board from a 6 hr expiry board
     // - 3 strikes (OTM,ATM,ITM)
   }
-  function testExtrapolateBoardShortExpiryLongerBoard() {
+  function testExtrapolateBoardShortExpiryLongerBoard() public {
     // TODO: extrapolating a 1 day expiry board from a 1 week expiry board
     // - 3 strikes (OTM,ATM,ITM)
   }
 
-  function testExtrapolateBoardLongExpiryShorterBoard() {
+  function testExtrapolateBoardLongExpiryShorterBoard() public {
     // TODO: extrapolating a 12w expiry board from a 10w expiry board
     // - 3 strikes (OTM,ATM,ITM)
   }
 
-  function testExtrapolateBoardLongExpiryLongerBoard() {
+  function testExtrapolateBoardLongExpiryLongerBoard() public {
     // TODO: extrapolating a 12w expiry board from a 14w expiry board
     // - 3 strikes (OTM,ATM,ITM)
   }
 
-  function testExtrapolateBoardZeroStrikes() {
+  function testExtrapolateBoardZeroStrikes() public {
     // TODO: works for 0 strikes
   }
 
-  function FUZZ_extrapolateShorterBoard() {
+  function FUZZ_extrapolateShorterBoard() public {
     // TODO: fuzz test:
     // - 3 strikes (OTM,ATM,ITM)
     // - 3 skews generated are >= same strikes from a longer dated board
   }
 
-  function FUZZ_extrapolateLongerBoard() {
+  function FUZZ_extrapolateLongerBoard() public {
     // TODO: fuzz test:
     // - 3 strikes (OTM,ATM,ITM)
     // - 3 skews generated are <= same strikes from a longer dated board
