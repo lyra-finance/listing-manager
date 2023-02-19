@@ -9,7 +9,7 @@ import "./lyra-interfaces/IOptionMarket.sol";
 import "./lyra-interfaces/IOptionMarketGovernanceWrapper.sol";
 
 // Libraries
-import "../lib/lyra-protocol/contracts/synthetix/DecimalMath.sol";
+import "../lib/lyra-utils/src/decimals/DecimalMath.sol";
 import "./lib/VolGenerator.sol";
 import "./lib/StrikePriceGenerator.sol";
 import "./lib/ExpiryGenerator.sol";
@@ -18,7 +18,6 @@ import "./lib/ExpiryGenerator.sol";
 import "./ListingManagerLibrarySettings.sol";
 import "../lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
 
-import "forge-std/console.sol";
 
 contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   using DecimalMath for uint;

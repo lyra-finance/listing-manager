@@ -2,12 +2,11 @@
 pragma solidity 0.8.16;
 
 // Libraries
-import "openzeppelin/utils/Arrays.sol";
-import "newport/synthetix/SignedDecimalMath.sol";
-import "newport/synthetix/DecimalMath.sol";
-import "newport/libraries/FixedPointMathLib.sol";
-import "lyra-utils/arrays/UnorderedMemoryArray.sol";
-import "forge-std/console2.sol";
+import "../../lib/openzeppelin-contracts/contracts/utils/Arrays.sol";
+import "../../lib/lyra-utils/src/arrays/UnorderedMemoryArray.sol";
+import "../../lib/lyra-utils/src/decimals/DecimalMath.sol";
+import "../../lib/lyra-utils/src/decimals/SignedDecimalMath.sol";
+import "../../lib/lyra-utils/src/math/FixedPointMathLib.sol";
 
 /**
  * @title Automated strike price generator

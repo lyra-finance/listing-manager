@@ -1,17 +1,14 @@
 //SPDX-License-Identifier: ISC
 pragma solidity 0.8.16;
 
-import "openzeppelin/utils/math/SafeCast.sol";
-import "openzeppelin/utils/math/Math.sol";
-import "newport/synthetix/DecimalMath.sol";
-import "newport/synthetix/SignedDecimalMath.sol";
+import "../../lib/openzeppelin-contracts/contracts/utils/math/SafeCast.sol";
+import "../../lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
+import "../../lib/lyra-utils/src/decimals/DecimalMath.sol";
+import "../../lib/lyra-utils/src/decimals/SignedDecimalMath.sol";
 
-// todo: maybe use the new Black76 and FixedPointMathLib and get those audited
-import "newport/libraries/FixedPointMathLib.sol";
-import "lyra-utils/arrays/MemoryBinarySearch.sol";
-
-// TODO: Remove before push
-import "forge-std/console.sol";
+// TODO: use the new FixedPointMathLib
+import "../../lib/lyra-utils/src/math/FixedPointMathLib.sol";
+import "../../lib/lyra-utils/src/arrays/MemoryBinarySearch.sol";
 
 /**
  * @title Automated vol generator
