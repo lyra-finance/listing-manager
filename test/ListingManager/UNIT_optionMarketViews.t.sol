@@ -23,4 +23,15 @@ contract ListingManager_OptionMarketViews_Test is ListingManagerTestBase {
   function testGetAllBoardDetails() public {
     listingManager.getAllBoardDetails();
   }
+
+  ////////////////
+  // isCBActive //
+  ////////////////
+
+  function testCBIsActive() public {
+    assertTrue(false);
+  }
+  function testCBIsNotActive() public {
+    assertTrue(false);
+  }
 }
