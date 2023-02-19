@@ -8,17 +8,36 @@ contract TestListingManager is ListingManager {
     IBaseExchangeAdapter _exchangeAdapter,
     ILiquidityPool _liquidityPool,
     IOptionGreekCache _optionGreekCache,
-    IOptionMarket _optionMarket
-  ) ListingManager(_exchangeAdapter, _liquidityPool, _optionGreekCache, _optionMarket) {}
-  //
-  //  function TEST_takeMarketOwnership() external {
-  //    optionMarket.acceptOwnership();
-  //  }
+    IOptionMarket _optionMarket,
+    IOptionMarketGovernanceWrapper _governanceWrapper
+  ) ListingManager(_exchangeAdapter, _liquidityPool, _optionGreekCache, _optionMarket, _governanceWrapper) {}
 
   function TEST_getNewBoardData(uint newExpiry)
     external
     returns (uint baseIv, ListingManager.StrikeToAdd[] memory boards)
   {
     return _getNewBoardData(newExpiry);
+  }
+
+  function TEST_fetchSurroundingBoards(BoardDetails[] memory boardDetails, uint expiry)
+    external
+    view
+    returns (VolGenerator.Board memory shortDated, VolGenerator.Board memory longDated)
+  {
+    return _fetchSurroundingBoards(boardDetails, expiry);
+  }
+
+  function TEST_secToAnnualized(uint sec) external view returns (uint) {
+    return _secToAnnualized(sec);
+  }
+
+  function TEST_quickSortStrikes(ListingManager.StrikeDetails[] memory arr)
+    public
+    returns (ListingManager.StrikeDetails[] memory result)
+  {
+    // sorting happens in place. ALWAYS pass in 0 and length - 1
+    _quickSortStrikes(arr, 0, int(arr.length) - 1);
+    // return a copy
+    return arr;
   }
 }

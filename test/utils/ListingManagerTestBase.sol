@@ -13,17 +13,21 @@ contract ListingManagerTestBase is Test, OptionMarketMockSetup {
   IOptionMarket optionMarket;
   ILiquidityPool liquidityPool;
   IBaseExchangeAdapter exchangeAdapter;
+  IOptionMarketGovernanceWrapper governanceWrapper;
   TestListingManager listingManager;
 
-  constructor() {}
+  constructor() {
+    vm.warp(1600000000);
+  }
 
   function setUp() public {
     greekCache = new MockOptionGreekCache();
     optionMarket = new MockOptionMarket();
     exchangeAdapter = new MockBaseExchangeAdapter();
     liquidityPool = new MockLiquidityPool();
+    governanceWrapper = new MockOptionMarketGovernanceWrapper();
 
-    listingManager = new TestListingManager(exchangeAdapter, liquidityPool, greekCache, optionMarket);
+    listingManager = new TestListingManager(exchangeAdapter, liquidityPool, greekCache, optionMarket, governanceWrapper);
 
     OptionMarketMockSetup.mockDefaultBoard(optionMarket, greekCache);
     mockSpotPrice(1500 ether);

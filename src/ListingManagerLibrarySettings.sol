@@ -1,8 +1,41 @@
 //SPDX-License-Identifier: ISC
 pragma solidity 0.8.16;
 
-abstract contract LastFridays {
-  uint[] lastFridays = [
+abstract contract ListingManagerLibrarySettings {
+  uint constant NEW_BOARD_MIN_EXPIRY = 7 days;
+  uint constant NEW_STRIKE_MIN_EXPIRY = 2 days;
+  uint constant NUM_WEEKLIES = 3;
+  uint constant NUM_MONTHLIES = 3;
+
+  uint constant MAX_SCALED_MONEYNESS = 1.2 ether;
+  uint constant MAX_NUM_STRIKES = 25;
+
+  uint[] PIVOTS = [
+    1 ether,
+    2 ether,
+    5 ether,
+    10 ether,
+    20 ether,
+    50 ether,
+    100 ether,
+    200 ether,
+    500 ether,
+    1000 ether,
+    2000 ether,
+    5000 ether,
+    10000 ether,
+    20000 ether,
+    50000 ether,
+    100000 ether,
+    200000 ether,
+    500000 ether,
+    1000000 ether,
+    2000000 ether,
+    5000000 ether,
+    10000000 ether
+  ];
+
+  uint[] LAST_FRIDAYS = [
     1674806400,
     1677225600,
     1680249600,

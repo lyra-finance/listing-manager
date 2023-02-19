@@ -46,15 +46,34 @@ contract StrikePriceTester {
 contract StrikePriceGeneratorTest is Test {
   using stdJson for string;
 
-  uint[] pivots;
+  uint[] pivots = [
+    1,
+    2,
+    5,
+    10,
+    20,
+    50,
+    100,
+    200,
+    500,
+    1000,
+    2000,
+    5000,
+    10000,
+    20000,
+    50000,
+    100000,
+    200000,
+    500000,
+    1000000,
+    2000000,
+    5000000,
+    10000000
+  ];
 
   StrikePriceTester tester;
 
   function setUp() public {
-    // load pivots.json into strikePriceTester
-    string memory path = string.concat(vm.projectRoot(), "/script/params/pivots.json");
-    string memory json = vm.readFile(path);
-    pivots = json.readUintArray(".pivots");
     tester = new StrikePriceTester(pivots);
   }
 
@@ -238,12 +257,14 @@ contract StrikePriceGeneratorTest is Test {
     (min, max) = tester.getStrikeRange(2.33 * 1e18, 100_000_000 * 1e18, 3.2e18);
 
     assertApproxEqAbs(min, 756223.8708292978e18, 1e10);
-    assertApproxEqAbs(max, 13223597383.977974e18, 1e14); // to the nearest 100th of a cent
+    assertApproxEqAbs(max, 13223597383.977974e18, 1e14);
+    // to the nearest 100th of a cent
 
     // 1 Sec DTE, ultra small spot -> checks for underflow / rounding errors
     (min, max) = tester.getStrikeRange(1, 0.0000001 * 1e18, 0.1e18);
 
-    assertApproxEqAbs(min, 99998219291, 1e7); // 5th digit accuracy
+    assertApproxEqAbs(min, 99998219291, 1e7);
+    // 5th digit accuracy
     assertApproxEqAbs(max, 100001780740, 1e7);
   }
 
