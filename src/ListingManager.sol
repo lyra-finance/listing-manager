@@ -279,6 +279,8 @@ contract ListingManager is LastFridays {
   }
 
   function _validateNewBoardExpiry(uint expiry) internal view {
+    console.log(block.timestamp);
+    console.log(expiry);
     if (expiry < block.timestamp + NEW_BOARD_MIN_EXPIRY) {
       revert("expiry too short");
     }
