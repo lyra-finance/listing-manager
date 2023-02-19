@@ -14,6 +14,7 @@ contract ListingManager_Views_Test is ListingManagerTestBase {
     // TODO: get queued board with strikes and assert data is correct
     listingManager.getQueuedBoard(1);
   }
+
   function testGetDeletedQueuedBoard() public {
     // TODO: get queued board after deleting it
     assertTrue(false);

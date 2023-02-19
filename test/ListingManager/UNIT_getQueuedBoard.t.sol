@@ -35,7 +35,6 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
     assertTrue(false);
   }
 
-
   ///////////////////////
   // _extrapolateBoard //
   ///////////////////////

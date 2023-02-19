@@ -51,7 +51,6 @@ contract ListingManager_misc_Test is ListingManagerTestBase {
     assertEq(res[4].skew, 5);
   }
 
-
   function testQuickSortStrikesEmptyArray() public {
     ListingManager.StrikeDetails[] memory arr = new ListingManager.StrikeDetails[](0);
 
@@ -60,7 +59,6 @@ contract ListingManager_misc_Test is ListingManagerTestBase {
     // TODO: catch revert vm.expectRevert();
     ListingManager.StrikeDetails[] memory res = listingManager.TEST_quickSortStrikes(arr);
   }
-
 
   function testQuickSortStrikesOneItem() public {
     ListingManager.StrikeDetails[] memory arr = new ListingManager.StrikeDetails[](1);
@@ -71,6 +69,4 @@ contract ListingManager_misc_Test is ListingManagerTestBase {
     assertEq(res[0].strikePrice, 1300 ether);
     assertEq(res[0].skew, 3);
   }
-
-
 }

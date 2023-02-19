@@ -13,7 +13,5 @@ interface IOptionMarketGovernanceWrapper {
     bool frozen
   ) external returns (uint boardId);
 
-  function addStrikeToBoard(IOptionMarket _optionMarket, uint boardId, uint strikePrice, uint skew)
-    external
-    returns (uint strikeId);
+  function addStrikeToBoard(IOptionMarket _optionMarket, uint boardId, uint strikePrice, uint skew) external;
 }

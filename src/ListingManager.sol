@@ -165,6 +165,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
         queuedStrikes[boardId].strikesToAdd[i].skew
       );
     }
+    // TODO: emit event for all strikes (we dont actually get an id back from the market)
 
     delete queuedStrikes[boardId];
   }
@@ -203,7 +204,9 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
       skews[i] = queueBoard.strikesToAdd[i].skew;
     }
 
-    governanceWrapper.createOptionBoard(optionMarket, queueBoard.expiry, queueBoard.baseIv, strikes, skews, false);
+    uint boardId =
+      governanceWrapper.createOptionBoard(optionMarket, queueBoard.expiry, queueBoard.baseIv, strikes, skews, false);
+    // TODO: emit event
 
     delete queuedBoards[expiry];
   }
