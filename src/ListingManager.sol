@@ -1,19 +1,22 @@
 //SPDX-License-Identifier: ISC
 pragma solidity 0.8.16;
 
-import "../lib/lyra-protocol/contracts/synthetix/DecimalMath.sol";
-
-import "../lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
-
-import "./ListingManagerLibrarySettings.sol";
+// Interfaces
 import "./lyra-interfaces/IBaseExchangeAdapter.sol";
 import "./lyra-interfaces/ILiquidityPool.sol";
 import "./lyra-interfaces/IOptionGreekCache.sol";
 import "./lyra-interfaces/IOptionMarket.sol";
 import "./lyra-interfaces/IOptionMarketGovernanceWrapper.sol";
+
+// Libraries
+import "../lib/lyra-protocol/contracts/synthetix/DecimalMath.sol";
 import "./lib/VolGenerator.sol";
 import "./lib/StrikePriceGenerator.sol";
 import "./lib/ExpiryGenerator.sol";
+
+// Inherited
+import "./ListingManagerLibrarySettings.sol";
+import "../lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
 
 import "forge-std/console.sol";
 
@@ -385,7 +388,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
 
     // Note: we treat the default ATM skew as 1.0
     // We pass in 1.0 as the baseIv... because.... TODO: why exactly?
-    baseIv = VolGenerator.getSkewForNewBoard(spotPrice, tteAnnualised, 1e18, shortDated, longDated);
+    baseIv = VolGenerator.getSkewForNewBoard(spotPrice, tteAnnualised, DecimalMath.UNIT, shortDated, longDated);
 
     strikesToAdd = new StrikeToAdd[](numNewStrikes);
     for (uint i = 0; i < numNewStrikes; ++i) {
@@ -408,7 +411,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
 
     // Note: we treat the default ATM skew as 1.0
     // We pass in 1.0 as the baseIv... because.... TODO: why exactly?
-    baseIv = VolGenerator.getSkewForNewBoard(spotPrice, tteAnnualised, 1e18, spotPrice, edgeBoard);
+    baseIv = VolGenerator.getSkewForNewBoard(spotPrice, tteAnnualised, DecimalMath.UNIT, spotPrice, edgeBoard);
 
     strikesToAdd = new StrikeToAdd[](numNewStrikes);
 
@@ -427,7 +430,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   function _toVolGeneratorBoard(BoardDetails memory details) internal view returns (VolGenerator.Board memory) {
     uint numStrikes = details.strikes.length;
 
-    quickSortStrikes(details.strikes, 0, int(numStrikes - 1));
+    _quickSortStrikes(details.strikes, 0, int(numStrikes - 1));
 
     uint[] memory orderedStrikePrices = new uint[](numStrikes);
     uint[] memory orderedSkews = new uint[](numStrikes);
@@ -497,10 +500,10 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
 
   /// TODO: can be moved to library functions
   function _secToAnnualized(uint sec) public pure returns (uint) {
-    return (sec * 1e18) / uint(365 days);
+    return (sec * DecimalMath.UNIT) / uint(365 days);
   }
 
-  function quickSortStrikes(StrikeDetails[] memory arr, int left, int right) internal pure {
+  function _quickSortStrikes(StrikeDetails[] memory arr, int left, int right) internal pure {
     // TODO: untested, just copy pasted
     int i = left;
     int j = right;
@@ -522,10 +525,10 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
       }
     }
     if (left < j) {
-      quickSortStrikes(arr, left, j);
+      _quickSortStrikes(arr, left, j);
     }
     if (i < right) {
-      quickSortStrikes(arr, i, right);
+      _quickSortStrikes(arr, i, right);
     }
   }
 

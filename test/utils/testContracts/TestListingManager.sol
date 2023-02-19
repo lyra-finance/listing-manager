@@ -26,4 +26,18 @@ contract TestListingManager is ListingManager {
   {
     return _fetchSurroundingBoards(boardDetails, expiry);
   }
+
+  function TEST_secToAnnualized(uint sec) external view returns (uint) {
+    return _secToAnnualized(sec);
+  }
+
+  function TEST_quickSortStrikes(ListingManager.StrikeDetails[] memory arr)
+    public
+    returns (ListingManager.StrikeDetails[] memory result)
+  {
+    // sorting happens in place. ALWAYS pass in 0 and length - 1
+    _quickSortStrikes(arr, 0, int(arr.length) - 1);
+    // return a copy
+    return arr;
+  }
 }
