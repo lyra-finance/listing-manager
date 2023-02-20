@@ -15,6 +15,7 @@ contract ListingManagerTestBase is Test, OptionMarketMockSetup {
   IBaseExchangeAdapter exchangeAdapter;
   IOptionMarketGovernanceWrapper governanceWrapper;
   TestListingManager listingManager;
+  address riskCouncil = address(0xbee);
 
   constructor() {
     vm.warp(1600000000);
@@ -28,6 +29,7 @@ contract ListingManagerTestBase is Test, OptionMarketMockSetup {
     governanceWrapper = new MockOptionMarketGovernanceWrapper();
 
     listingManager = new TestListingManager(exchangeAdapter, liquidityPool, greekCache, optionMarket, governanceWrapper);
+    listingManager.setRiskCouncil(riskCouncil);
 
     OptionMarketMockSetup.mockDefaultBoard(optionMarket, greekCache);
     mockSpotPrice(1500 ether);
