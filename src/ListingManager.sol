@@ -141,11 +141,13 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
 
   function executeQueuedStrikes(uint boardId) public {
     if (isCBActive()) {
+      // TODO: event
       delete queuedStrikes[boardId];
       return;
     }
 
     if (queuedStrikes[boardId].queuedTime + queueStaleTime + strikeQueueTime < block.timestamp) {
+      // TODO: event
       delete queuedStrikes[boardId];
       return;
     }
@@ -178,6 +180,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
 
   function executeQueuedBoard(uint expiry) public {
     if (isCBActive()) {
+      // TODO: event
       delete queuedBoards[expiry];
       return;
     }
@@ -185,6 +188,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     QueuedBoard memory queuedBoard = queuedBoards[expiry];
     // if it is stale (staleQueueTime), delete the entry
     if (queuedBoard.queuedTime + boardQueueTime + queueStaleTime < block.timestamp) {
+      // TODO: event
       delete queuedBoards[expiry];
       return;
     }
@@ -411,7 +415,6 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     uint numNewStrikes,
     VolGenerator.Board memory edgeBoard
   ) internal view returns (uint baseIv, StrikeToAdd[] memory strikesToAdd) {
-    uint spotPrice = _getSpotPrice();
     uint tteAnnualised = _secToAnnualized(expiry - block.timestamp);
 
     // Note: we treat the default ATM skew as 1.0
@@ -446,7 +449,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     }
 
     return VolGenerator.Board({
-      // This will revert for expired boards TODO: add a test for this
+      // This will revert for expired boards
       tAnnualized: _secToAnnualized(details.expiry - block.timestamp),
       baseIv: details.baseIv,
       orderedStrikePrices: orderedStrikePrices,
@@ -492,13 +495,11 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   // Views //
   ///////////
 
-  function getQueuedBoard(uint expiry) external returns (QueuedBoard memory) {
-    // TODO: probably broken because of the array
+  function getQueuedBoard(uint expiry) external view returns (QueuedBoard memory) {
     return queuedBoards[expiry];
   }
 
-  function getQueuedStrikes(uint boardId) external returns (QueuedStrikes memory) {
-    // TODO: probably broken because of the array
+  function getQueuedStrikes(uint boardId) external view returns (QueuedStrikes memory) {
     return queuedStrikes[boardId];
   }
 

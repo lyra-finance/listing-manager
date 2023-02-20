@@ -22,7 +22,7 @@ contract ListingManagerTest is ListingManagerTestBase {
   }
 
   function testCreateAndAddNewBoard() public {
-    uint expiry = block.timestamp + 4 weeks;
+    uint expiry = block.timestamp + 2 weeks;
     expiry = ExpiryGenerator.getNextFriday(expiry);
     listingManager.queueNewBoard(expiry);
     (, ListingManager.StrikeToAdd[] memory strikes) = listingManager.TEST_getNewBoardData(expiry);
