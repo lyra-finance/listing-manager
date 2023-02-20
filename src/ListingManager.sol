@@ -18,8 +18,6 @@ import "./lib/ExpiryGenerator.sol";
 import "./ListingManagerLibrarySettings.sol";
 import "../lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
 
-import "forge-std/console.sol";
-
 contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   using DecimalMath for uint;
 
@@ -184,14 +182,14 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
       return;
     }
 
-    QueuedBoard memory queueBoard = queuedBoards[expiry];
+    QueuedBoard memory queuedBoard = queuedBoards[expiry];
     // if it is stale (staleQueueTime), delete the entry
-    if (queueBoard.queuedTime + boardQueueTime + queueStaleTime > block.timestamp) {
+    if (queuedBoard.queuedTime + boardQueueTime + queueStaleTime > block.timestamp) {
       revert("board stale");
     }
 
     // execute the queued board if the required time has passed
-    if (queueBoard.queuedTime + boardQueueTime > block.timestamp) {
+    if (queuedBoard.queuedTime + boardQueueTime > block.timestamp) {
       revert("too early");
     }
 
@@ -199,19 +197,19 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   }
 
   function _executeQueuedBoard(uint expiry) internal {
-    QueuedBoard memory queueBoard = queuedBoards[expiry];
-    uint[] memory strikes = new uint[](queueBoard.strikesToAdd.length);
-    uint[] memory skews = new uint[](queueBoard.strikesToAdd.length);
+    QueuedBoard memory queuedBoard = queuedBoards[expiry];
+    uint[] memory strikes = new uint[](queuedBoard.strikesToAdd.length);
+    uint[] memory skews = new uint[](queuedBoard.strikesToAdd.length);
 
-    for (uint i; i < queueBoard.strikesToAdd.length; i++) {
-      strikes[i] = queueBoard.strikesToAdd[i].strikePrice;
-      skews[i] = queueBoard.strikesToAdd[i].skew;
+    for (uint i; i < queuedBoard.strikesToAdd.length; i++) {
+      strikes[i] = queuedBoard.strikesToAdd[i].strikePrice;
+      skews[i] = queuedBoard.strikesToAdd[i].skew;
     }
 
     uint boardId =
-      governanceWrapper.createOptionBoard(optionMarket, queueBoard.expiry, queueBoard.baseIv, strikes, skews, false);
+      governanceWrapper.createOptionBoard(optionMarket, queuedBoard.expiry, queuedBoard.baseIv, strikes, skews, false);
 
-    emit LM_QueuedBoardExecuted(boardId, queueBoard, msg.sender);
+    emit LM_QueuedBoardExecuted(boardId, queuedBoard, msg.sender);
     delete queuedBoards[expiry];
   }
 
