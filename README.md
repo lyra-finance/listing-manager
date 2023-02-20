@@ -6,3 +6,9 @@ Contracts for automatic generation of boards, strikes and initial volatilities
 git submodule update --init --recursive
 forge build
 ```
+
+## Updating Git submodules
+```shell
+git submodule update --remote --recursive --force
+forge build
+```
