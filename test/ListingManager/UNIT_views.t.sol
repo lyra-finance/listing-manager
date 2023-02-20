@@ -12,7 +12,11 @@ contract ListingManager_Views_Test is ListingManagerTestBase {
 
   function testGetQueuedBoard() public {
     // TODO: get queued board with strikes and assert data is correct
-    listingManager.getQueuedBoard(1);
+    uint expiry= addBoardWithStrikes();
+    ListingManager.QueuedBoard memory queued = listingManager.getQueuedBoard(expiry);
+    assertEq(queued.expiry, ExpiryGenerator.getNextFriday(block.timestamp) + 1 weeks);
+    assertGt(queued.strikesToAdd.length, 1);
+    console.log('length of strikes added', queued.strikesToAdd.length);
   }
 
   function testGetDeletedQueuedBoard() public {
@@ -31,6 +35,14 @@ contract ListingManager_Views_Test is ListingManagerTestBase {
 
   function testGetDeletedQueuedStrikes() public {
     // TODO: get queued strikes after deleting it
+
     assertTrue(false);
+  }
+
+
+  // helpers
+  function addBoardWithStrikes() internal returns(uint expiry) {
+    expiry = ExpiryGenerator.getNextFriday(block.timestamp) + 1 weeks;
+    listingManager.queueNewBoard(expiry);
   }
 }
