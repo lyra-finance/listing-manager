@@ -24,7 +24,21 @@ contract ListingManager_Views_Test is ListingManagerTestBase {
 
   function testGetDeletedQueuedBoard() public {
     // TODO: get queued board after deleting it
-    assertTrue(false);
+     uint expiry = addBoardWithStrikes();
+    ListingManager.QueuedBoard memory queued = listingManager.getQueuedBoard(expiry);
+    console.log('length of strikes added', queued.strikesToAdd.length);
+    console.log('queueboard', queued.queuedTime);
+    console.log('base iv', queued.baseIv);
+    console.log('strikes to add', queued.strikesToAdd.length);
+    assertEq(queued.expiry, ExpiryGenerator.getNextFriday(block.timestamp) + 1 weeks);
+    assertEq(queued.strikesToAdd.length, 13, "length of strikes does not match expected");  
+
+    // veto Board
+    listingManager.vetoQueuedBoard(expiry);
+    ListingManager.QueuedBoard memory queued = listingManager.getQueuedBoard(expiry);
+
+    assertEq(queued.expiry, ExpiryGenerator.getNextFriday(block.timestamp) + 1 weeks);
+    assertEq(queued.strikesToAdd.length, 13, "length of strikes does not match expected");  
   }
 
   ////////////////////////
