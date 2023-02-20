@@ -99,12 +99,14 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   ///////////
   function setRiskCouncil(address _riskCouncil) external onlyOwner {
     riskCouncil = _riskCouncil;
+    emit LM_RiskCouncilSet(_riskCouncil, msg.sender);
   }
 
   function setQueueParams(uint _boardQueueTime, uint _strikeQueueTime, uint _queueStaleTime) external onlyOwner {
     boardQueueTime = _boardQueueTime;
     strikeQueueTime = _strikeQueueTime;
     queueStaleTime = _queueStaleTime;
+    emit LM_QueueParamsSet(_boardQueueTime, _strikeQueueTime, _queueStaleTime, msg.sender);
   }
 
   /////////////////////
@@ -113,11 +115,13 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
 
   /// @notice Forcefully remove the QueuedStrikes for given boardId
   function vetoStrikeUpdate(uint boardId) external onlyRiskCouncil {
+    emit LM_StrikeUpdateVetoed(boardId, queuedStrikes[boardId], msg.sender);
     delete queuedStrikes[boardId];
   }
 
   /// @notice Forcefully remove the QueuedBoard for given expiry
   function vetoQueuedBoard(uint expiry) external onlyRiskCouncil {
+    emit LM_BoardVetoed(expiry, queuedBoards[expiry], msg.sender);
     delete queuedBoards[expiry];
   }
 
@@ -137,11 +141,13 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
 
   function executeQueuedStrikes(uint boardId) public {
     if (isCBActive()) {
+      // TODO: event
       delete queuedStrikes[boardId];
       return;
     }
 
-    if (queuedStrikes[boardId].queuedTime + queueStaleTime + strikeQueueTime > block.timestamp) {
+    if (queuedStrikes[boardId].queuedTime + queueStaleTime + strikeQueueTime < block.timestamp) {
+      // TODO: event
       delete queuedStrikes[boardId];
       return;
     }
@@ -163,8 +169,8 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
         queuedStrikes[boardId].strikesToAdd[i].skew
       );
     }
-    // TODO: emit event for all strikes (we dont actually get an id back from the market)
 
+    emit LM_QueuedStrikeExecuted(boardId, queueStrikes, msg.sender);
     delete queuedStrikes[boardId];
   }
 
@@ -174,18 +180,21 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
 
   function executeQueuedBoard(uint expiry) public {
     if (isCBActive()) {
+      // TODO: event
       delete queuedBoards[expiry];
       return;
     }
 
-    QueuedBoard memory queueBoard = queuedBoards[expiry];
+    QueuedBoard memory queuedBoard = queuedBoards[expiry];
     // if it is stale (staleQueueTime), delete the entry
-    if (queueBoard.queuedTime + boardQueueTime + queueStaleTime > block.timestamp) {
-      revert("board stale");
+    if (queuedBoard.queuedTime + boardQueueTime + queueStaleTime < block.timestamp) {
+      // TODO: event
+      delete queuedBoards[expiry];
+      return;
     }
 
     // execute the queued board if the required time has passed
-    if (queueBoard.queuedTime + boardQueueTime > block.timestamp) {
+    if (queuedBoard.queuedTime + boardQueueTime > block.timestamp) {
       revert("too early");
     }
 
@@ -193,19 +202,19 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   }
 
   function _executeQueuedBoard(uint expiry) internal {
-    QueuedBoard memory queueBoard = queuedBoards[expiry];
-    uint[] memory strikes = new uint[](queueBoard.strikesToAdd.length);
-    uint[] memory skews = new uint[](queueBoard.strikesToAdd.length);
+    QueuedBoard memory queuedBoard = queuedBoards[expiry];
+    uint[] memory strikes = new uint[](queuedBoard.strikesToAdd.length);
+    uint[] memory skews = new uint[](queuedBoard.strikesToAdd.length);
 
-    for (uint i; i < queueBoard.strikesToAdd.length; i++) {
-      strikes[i] = queueBoard.strikesToAdd[i].strikePrice;
-      skews[i] = queueBoard.strikesToAdd[i].skew;
+    for (uint i; i < queuedBoard.strikesToAdd.length; i++) {
+      strikes[i] = queuedBoard.strikesToAdd[i].strikePrice;
+      skews[i] = queuedBoard.strikesToAdd[i].skew;
     }
 
     uint boardId =
-      governanceWrapper.createOptionBoard(optionMarket, queueBoard.expiry, queueBoard.baseIv, strikes, skews, false);
-    // TODO: emit event
+      governanceWrapper.createOptionBoard(optionMarket, queuedBoard.expiry, queuedBoard.baseIv, strikes, skews, false);
 
+    emit LM_QueuedBoardExecuted(boardId, queuedBoard, msg.sender);
     delete queuedBoards[expiry];
   }
 
@@ -406,7 +415,6 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     uint numNewStrikes,
     VolGenerator.Board memory edgeBoard
   ) internal view returns (uint baseIv, StrikeToAdd[] memory strikesToAdd) {
-    uint spotPrice = _getSpotPrice();
     uint tteAnnualised = _secToAnnualized(expiry - block.timestamp);
 
     // Note: we treat the default ATM skew as 1.0
@@ -441,7 +449,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     }
 
     return VolGenerator.Board({
-      // This will revert for expired boards TODO: add a test for this
+      // This will revert for expired boards
       tAnnualized: _secToAnnualized(details.expiry - block.timestamp),
       baseIv: details.baseIv,
       orderedStrikePrices: orderedStrikePrices,
@@ -465,11 +473,14 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   function getBoardDetails(uint boardId) public view returns (BoardDetails memory boardDetails) {
     (IOptionMarket.OptionBoard memory board, IOptionMarket.Strike[] memory strikes,,,) =
       optionMarket.getBoardAndStrikeDetails(boardId);
+
+    IOptionGreekCache.BoardGreeksView memory boardGreeks = optionGreekCache.getBoardGreeksView(boardId);
+
     StrikeDetails[] memory strikeDetails = new StrikeDetails[](strikes.length);
     for (uint i = 0; i < strikes.length; ++i) {
-      strikeDetails[i] = StrikeDetails({strikePrice: strikes[i].strikePrice, skew: strikes[i].skew});
+      strikeDetails[i] = StrikeDetails({strikePrice: strikes[i].strikePrice, skew: boardGreeks.skewGWAVs[i]});
     }
-    return BoardDetails({expiry: board.expiry, baseIv: board.iv, strikes: strikeDetails});
+    return BoardDetails({expiry: board.expiry, baseIv: boardGreeks.ivGWAV, strikes: strikeDetails});
   }
 
   function _getSpotPrice() internal view returns (uint spotPrice) {
@@ -484,13 +495,11 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   // Views //
   ///////////
 
-  function getQueuedBoard(uint expiry) external returns (QueuedBoard memory) {
-    // TODO: probably broken because of the array
+  function getQueuedBoard(uint expiry) external view returns (QueuedBoard memory) {
     return queuedBoards[expiry];
   }
 
-  function getQueuedStrikes(uint boardId) external returns (QueuedStrikes memory) {
-    // TODO: probably broken because of the array
+  function getQueuedStrikes(uint boardId) external view returns (QueuedStrikes memory) {
     return queuedStrikes[boardId];
   }
 
@@ -545,4 +554,22 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     }
     _;
   }
+
+  /////////////
+  // Events ///
+  /////////////
+
+  event LM_RiskCouncilSet(address riskCouncil, address owner);
+
+  event LM_QueueParamsSet(uint boardQueuedTime, uint strikesQueuedTime, uint staleTime, address executor);
+
+  event LM_StrikeUpdateVetoed(uint boardId, QueuedStrikes exectuedStrike, address executor);
+
+  event LM_BoardVetoed(uint expiry, QueuedBoard queuedBoards, address executor);
+
+  event LM_QueuedStrikeExecuted(uint boardId, QueuedStrikes strikes, address executor);
+
+  event LM_QueuedBoardExecuted(uint expiry, QueuedBoard board, address executor);
+
+  event StrikesAdded(uint boardId, uint[] strikePrices, uint[] skews);
 }

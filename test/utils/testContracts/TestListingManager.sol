@@ -40,4 +40,8 @@ contract TestListingManager is ListingManager {
     // return a copy
     return arr;
   }
+
+  function TEST_isCBActive() public returns (bool) {
+    return isCBActive();
+  }
 }
