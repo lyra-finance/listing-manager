@@ -46,7 +46,7 @@ library StrikePriceGenerator {
     uint maxNumStrikes,
     uint[] memory liveStrikes,
     uint[] storage pivots
-  ) public view returns (uint[] memory newStrikes, uint numAdded) {
+  ) internal view returns (uint[] memory newStrikes, uint numAdded) {
     // find step size and the nearest pivot
     uint nearestPivot = getLeftNearestPivot(pivots, spot);
     uint step = getStep(nearestPivot, tTarget);
@@ -78,7 +78,7 @@ library StrikePriceGenerator {
    * @param spot Spot price
    * @return nearestPivot left nearest pivot
    */
-  function getLeftNearestPivot(uint[] storage pivots, uint spot) public view returns (uint nearestPivot) {
+  function getLeftNearestPivot(uint[] storage pivots, uint spot) internal view returns (uint nearestPivot) {
     uint maxPivot = pivots[pivots.length - 1];
     if (spot >= maxPivot) {
       revert SpotPriceAboveMaxStrike(maxPivot);
@@ -106,7 +106,7 @@ library StrikePriceGenerator {
    * @param step Step size
    * @return atmStrike The first strike satisfying strike <= spot < (strike + step)
    */
-  function getATMStrike(uint spot, uint pivot, uint step) public pure returns (uint atmStrike) {
+  function getATMStrike(uint spot, uint pivot, uint step) internal pure returns (uint atmStrike) {
     atmStrike = pivot;
     while (true) {
       uint nextStrike = atmStrike + step;
@@ -124,7 +124,7 @@ library StrikePriceGenerator {
     uint tTarget,
     uint spot,
     uint maxScaledMoneyness
-  ) public pure returns (uint minStrike, uint maxStrike) {
+  ) internal pure returns (uint minStrike, uint maxStrike) {
     uint strikeRange = int(maxScaledMoneyness.multiplyDecimal(Math.sqrt(tTarget * DecimalMath.UNIT))).exp();
     return (spot.divideDecimal(strikeRange), spot.multiplyDecimal(strikeRange));
   }
@@ -137,7 +137,7 @@ library StrikePriceGenerator {
    * @param tAnnualized Years to expiry, 18 decimals.
    * @return step The strike step size at this pivot and tAnnualized.
    */
-  function getStep(uint p, uint tAnnualized) public pure returns (uint step) {
+  function getStep(uint p, uint tAnnualized) internal pure returns (uint step) {
     unchecked {
       uint div;
       if (tAnnualized * (365 days) <= (1 weeks * 1e18)) {

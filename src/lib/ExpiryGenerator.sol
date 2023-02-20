@@ -28,7 +28,7 @@ library ExpiryGenerator {
     uint nMonthlies,
     uint timestamp,
     uint[] storage monthlyExpiries
-  ) public view returns (uint[] memory expiries) {
+  ) internal view returns (uint[] memory expiries) {
     return _expiriesGenerator(nWeeklies, nMonthlies, timestamp, monthlyExpiries);
   }
 
@@ -77,7 +77,7 @@ library ExpiryGenerator {
    * @param timestamp The current timestamp
    * @return Timestamp the timestamp of the closest friday to the current timestamp,
    */
-  function getNextFriday(uint timestamp) public view returns (uint) {
+  function getNextFriday(uint timestamp) internal view returns (uint) {
     // by adding the offset you make the friday 8am the reference point - so when you mod, you'll round to the nearest friday
     return timestamp - ((timestamp - MOD_OFFSET) % 7 days) + 7 days;
   }

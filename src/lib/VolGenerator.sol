@@ -57,7 +57,7 @@ library VolGenerator {
     uint baseIv,
     Board memory shortDatedBoard,
     Board memory longDatedBoard
-  ) public pure returns (uint newSkew) {
+  ) internal pure returns (uint newSkew) {
     // get matching skews of adjacent boards
     uint shortDatedSkew = getSkewForLiveBoard(newStrike, shortDatedBoard);
 
@@ -93,7 +93,7 @@ library VolGenerator {
     uint baseIv,
     uint spot,
     Board memory edgeBoard
-  ) public pure returns (uint newSkew) {
+  ) internal pure returns (uint newSkew) {
     return _extrapolateSkewAcrossBoards(
       newStrike,
       edgeBoard.orderedStrikePrices,
@@ -113,7 +113,7 @@ library VolGenerator {
    * @param liveBoard Board details of the live board
    * @return newSkew Estimated skew of the new strike
    */
-  function getSkewForLiveBoard(uint newStrike, Board memory liveBoard) public pure returns (uint newSkew) {
+  function getSkewForLiveBoard(uint newStrike, Board memory liveBoard) internal pure returns (uint newSkew) {
     uint[] memory strikePrices = liveBoard.orderedStrikePrices;
     uint[] memory skews = liveBoard.orderedSkews;
 
@@ -282,7 +282,7 @@ library VolGenerator {
    * @param spot dollar Chainlink spot, 18 decimals
    * @param tAnnualized annualized time-to-expiry, 18 decimals
    */
-  function strikeToMoneyness(uint strike, uint spot, uint tAnnualized) public pure returns (int moneyness) {
+  function strikeToMoneyness(uint strike, uint spot, uint tAnnualized) internal pure returns (int moneyness) {
     unchecked {
       moneyness = int(strike.divideDecimal(spot)).ln().divideDecimal(int(Math.sqrt(tAnnualized * DecimalMath.UNIT)));
     }
@@ -295,7 +295,7 @@ library VolGenerator {
    * @param spot dollar Chainlink spot, 18 decimals
    * @param tAnnualized annualized time-to-expiry, 18 decimals
    */
-  function moneynessToStrike(int moneyness, uint spot, uint tAnnualized) public pure returns (uint strike) {
+  function moneynessToStrike(int moneyness, uint spot, uint tAnnualized) internal pure returns (uint strike) {
     unchecked {
       strike = moneyness.multiplyDecimal(int(Math.sqrt(tAnnualized * DecimalMath.UNIT))).exp().multiplyDecimal(spot);
     }
@@ -307,7 +307,7 @@ library VolGenerator {
    * @param skew The volatility skew of the given strike.
    * @return variance Variance of the given strike.
    */
-  function getVariance(uint baseIv, uint skew) public pure returns (uint variance) {
+  function getVariance(uint baseIv, uint skew) internal pure returns (uint variance) {
     // todo: good candidate for a standalone Lyra-util library
     variance = baseIv.multiplyDecimal(skew);
     return variance.multiplyDecimal(variance);
@@ -318,7 +318,7 @@ library VolGenerator {
     uint leftWeight,
     uint rightWeight,
     uint denominator
-  ) public pure returns (uint) {
+  ) internal pure returns (uint) {
     uint weightedAvg = leftVal.multiplyDecimal(leftWeight) + (DecimalMath.UNIT - leftVal).multiplyDecimal(rightWeight);
 
     return Math.sqrt(weightedAvg.divideDecimal(denominator) * DecimalMath.UNIT);
