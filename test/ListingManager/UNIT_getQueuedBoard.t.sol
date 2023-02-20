@@ -5,6 +5,9 @@ import "forge-std/Test.sol";
 
 import "../utils/ListingManagerTestBase.sol";
 
+// import lib for next friday
+import "../../src/lib/ExpiryGenerator.sol";
+
 contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
   ///////////////////////
   // _interpolateBoard //
@@ -81,16 +84,44 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
   // TODO: implement tests:
   // - hit all 3 coverage branches
   // - correct number of strikes generated
-  function getNewBoardData() public {}
+  function testGetNewBoardData() public {}
 
   ////////////////////
   // _queueNewBoard //
   ////////////////////
 
-  // TODO: implement tests:
   // - cb reverts queueing
   // - reverts if invalid expiry (too short/not weekly/not monthly)
   // - reverts if board already queued
   // - successfully queues (check state after)
-  function queueNewBoard() public {}
+  function testQueueNewBoard() public {
+    // set the CB to revert
+    uint expiry = ExpiryGenerator.getNextFriday(block.timestamp);
+    vm.mockCall(address(liquidityPool), abi.encodeWithSelector(ILiquidityPool.CBTimestamp.selector), abi.encode(block.timestamp + 4 weeks));
+    vm.expectRevert('CB active');   
+    listingManager.queueNewBoard(expiry);
+
+    // // set the CB to not revert
+    vm.mockCall(address(liquidityPool), abi.encodeWithSelector(ILiquidityPool.CBTimestamp.selector), abi.encode(0));
+    expiry = expiry - 2 weeks;
+    vm.expectRevert('expiry too short');
+    listingManager.queueNewBoard(expiry);
+
+    // should revert, expiry not a friday
+    expiry = expiry + 4 weeks + 1 days;
+    vm.expectRevert('expiry doesn\'t match format');
+    listingManager.queueNewBoard(expiry);
+
+    // sucessfully queue board
+    expiry = ExpiryGenerator.getNextFriday(block.timestamp + 2 weeks);
+    listingManager.queueNewBoard(expiry);
+
+    // should revert, board already queued
+    vm.expectRevert('board already queued');
+    listingManager.queueNewBoard(expiry);
+
+    // check the board is queued
+    ListingManager.QueuedBoard memory queued = listingManager.getQueuedBoard(expiry);
+    assertEq(queued.expiry, expiry);
+  }
 }
