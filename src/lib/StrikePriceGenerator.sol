@@ -186,7 +186,6 @@ library StrikePriceGenerator {
       remainNumStrikes--;
     }
 
-    bool isLeft = true;
     uint nextStrike;
     uint lastStrike;
     uint stepFromAtm;
@@ -194,8 +193,7 @@ library StrikePriceGenerator {
     while (remainNumStrikes > 0) {
       stepFromAtm = (1 + (i / 2)) * step;
       lastStrike = nextStrike;
-      if (isLeft) {
-        // prioritize left strike
+      if (i % 2 == 0) { // prioritize left strike
         nextStrike = (atmStrike > stepFromAtm) ? atmStrike - stepFromAtm : 0;
       } else {
         nextStrike = atmStrike + stepFromAtm;
@@ -211,7 +209,6 @@ library StrikePriceGenerator {
         return (newStrikes, numAdded);
       }
 
-      isLeft = !isLeft;
       i++;
     }
   }
