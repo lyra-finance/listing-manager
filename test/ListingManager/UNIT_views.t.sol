@@ -14,14 +14,14 @@ contract ListingManager_Views_Test is ListingManagerTestBase {
     uint expiry = addBoardWithStrikes();
     ListingManager.QueuedBoard memory queued = listingManager.getQueuedBoard(expiry);
     assertEq(queued.expiry, ExpiryGenerator.getNextFriday(block.timestamp) + 1 weeks);
-    assertEq(queued.strikesToAdd.length, 13, "length of strikes does not match expected");    
+    assertEq(queued.strikesToAdd.length, 13, "length of strikes does not match expected");
   }
 
   function testCannotGetDeletedQueuedBoard() public {
     uint expiry = addBoardWithStrikes();
     ListingManager.QueuedBoard memory queued = listingManager.getQueuedBoard(expiry);
     assertEq(queued.expiry, ExpiryGenerator.getNextFriday(block.timestamp) + 1 weeks);
-    assertEq(queued.strikesToAdd.length, 13, "length of strikes does not match expected");  
+    assertEq(queued.strikesToAdd.length, 13, "length of strikes does not match expected");
 
     // veto Board
     vm.prank(riskCouncil);
@@ -29,8 +29,8 @@ contract ListingManager_Views_Test is ListingManagerTestBase {
     ListingManager.QueuedBoard memory dequeued = listingManager.getQueuedBoard(expiry);
 
     assertEq(dequeued.expiry, 0);
-    assertEq(dequeued.strikesToAdd.length, 0, "length of strikes does not match expected"); 
-    assertEq(dequeued.baseIv, 0); 
+    assertEq(dequeued.strikesToAdd.length, 0, "length of strikes does not match expected");
+    assertEq(dequeued.baseIv, 0);
   }
 
   ////////////////////////
@@ -48,7 +48,7 @@ contract ListingManager_Views_Test is ListingManagerTestBase {
   }
 
   // helpers
-  function addBoardWithStrikes() internal returns(uint expiry) {
+  function addBoardWithStrikes() internal returns (uint expiry) {
     expiry = ExpiryGenerator.getNextFriday(block.timestamp) + 1 weeks;
     listingManager.queueNewBoard(expiry);
   }

@@ -145,7 +145,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
       return;
     }
 
-    if (queuedStrikes[boardId].queuedTime + queueStaleTime + strikeQueueTime > block.timestamp) {
+    if (queuedStrikes[boardId].queuedTime + queueStaleTime + strikeQueueTime < block.timestamp) {
       delete queuedStrikes[boardId];
       return;
     }
@@ -184,8 +184,9 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
 
     QueuedBoard memory queuedBoard = queuedBoards[expiry];
     // if it is stale (staleQueueTime), delete the entry
-    if (queuedBoard.queuedTime + boardQueueTime + queueStaleTime > block.timestamp) {
-      revert("board stale");
+    if (queuedBoard.queuedTime + boardQueueTime + queueStaleTime < block.timestamp) {
+      delete queuedBoards[expiry];
+      return;
     }
 
     // execute the queued board if the required time has passed
@@ -567,7 +568,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
 
   event LM_QueuedStrikeExecuted(uint boardId, QueuedStrikes strikes, address executor);
 
-  event LM_QueuedBoardExecuted(uint expiry, QueuedBoard board,address executor);
+  event LM_QueuedBoardExecuted(uint expiry, QueuedBoard board, address executor);
 
   event StrikesAdded(uint boardId, uint[] strikePrices, uint[] skews);
 }
