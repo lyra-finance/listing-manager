@@ -282,8 +282,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
       revert("expiry too short");
     }
 
-    uint[] memory validExpiries =
-      ExpiryGenerator.getExpiries(NUM_WEEKLIES, NUM_MONTHLIES, block.timestamp, LAST_FRIDAYS);
+    uint[] memory validExpiries = getValidExpiries();
 
     for (uint i = 0; i < validExpiries.length; ++i) {
       if (validExpiries[i] == expiry) {
@@ -334,10 +333,11 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   }
 
   /// @notice Gets the closest board on both sides of the given expiry, converting them to the format required for the vol generator
-  function _fetchSurroundingBoards(
-    BoardDetails[] memory boardDetails,
-    uint expiry
-  ) internal view returns (VolGenerator.Board memory shortDated, VolGenerator.Board memory longDated) {
+  function _fetchSurroundingBoards(BoardDetails[] memory boardDetails, uint expiry)
+    internal
+    view
+    returns (VolGenerator.Board memory shortDated, VolGenerator.Board memory longDated)
+  {
     if (boardDetails.length == 0) {
       revert("no boards");
     }
@@ -492,6 +492,10 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   function getQueuedStrikes(uint boardId) external returns (QueuedStrikes memory) {
     // TODO: probably broken because of the array
     return queuedStrikes[boardId];
+  }
+
+  function getValidExpiries() public view returns (uint[] memory validExpiries) {
+    return ExpiryGenerator.getExpiries(NUM_WEEKLIES, NUM_MONTHLIES, block.timestamp, LAST_FRIDAYS);
   }
 
   //////////

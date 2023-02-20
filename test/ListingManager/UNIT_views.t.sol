@@ -33,4 +33,16 @@ contract ListingManager_Views_Test is ListingManagerTestBase {
     // TODO: get queued strikes after deleting it
     assertTrue(false);
   }
+
+  //////////////////////
+  // getValidExpiries //
+  //////////////////////
+  function testGetValidExpiries() public {
+    uint[] memory validExpiries = listingManager.getValidExpiries();
+    console.log("Valid expiries:");
+    for (uint i = 0; i < validExpiries.length; i++) {
+      console.log("-", validExpiries[i]);
+    }
+    // TODO: vm.warp to specific times to test?
+  }
 }

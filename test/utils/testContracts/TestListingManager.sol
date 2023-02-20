@@ -19,10 +19,11 @@ contract TestListingManager is ListingManager {
     return _getNewBoardData(newExpiry);
   }
 
-  function TEST_fetchSurroundingBoards(
-    BoardDetails[] memory boardDetails,
-    uint expiry
-  ) external view returns (VolGenerator.Board memory shortDated, VolGenerator.Board memory longDated) {
+  function TEST_fetchSurroundingBoards(BoardDetails[] memory boardDetails, uint expiry)
+    external
+    view
+    returns (VolGenerator.Board memory shortDated, VolGenerator.Board memory longDated)
+  {
     return _fetchSurroundingBoards(boardDetails, expiry);
   }
 
