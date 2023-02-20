@@ -18,7 +18,6 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
   function testInterpolateBoardShortExpiry() public {
     // TODO: interpolates correctly for short expiry (1d)
     // - 3 strikes (OTM,ATM,ITM)
-
     assertTrue(false);
   }
 
@@ -85,12 +84,13 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
   // TODO: implement tests:
   // - hit all 3 coverage branches
   // - correct number of strikes generated
-  function testGetNewBoardData() public {}
+  function getNewBoardData() public {}
 
   ////////////////////
   // _queueNewBoard //
   ////////////////////
 
+  // TODO: implement tests:
   // - cb reverts queueing
   // - reverts if invalid expiry (too short/not weekly/not monthly)
   // - reverts if board already queued

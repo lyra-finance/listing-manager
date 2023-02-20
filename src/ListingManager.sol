@@ -9,7 +9,7 @@ import "./lyra-interfaces/IOptionMarket.sol";
 import "./lyra-interfaces/IOptionMarketGovernanceWrapper.sol";
 
 // Libraries
-import "../lib/lyra-protocol/contracts/synthetix/DecimalMath.sol";
+import "../lib/lyra-utils/src/decimals/DecimalMath.sol";
 import "./lib/VolGenerator.sol";
 import "./lib/StrikePriceGenerator.sol";
 import "./lib/ExpiryGenerator.sol";
@@ -288,8 +288,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
       revert("expiry too short");
     }
 
-    uint[] memory validExpiries =
-      ExpiryGenerator.getExpiries(NUM_WEEKLIES, NUM_MONTHLIES, block.timestamp, LAST_FRIDAYS);
+    uint[] memory validExpiries = getValidExpiries();
 
     for (uint i = 0; i < validExpiries.length; ++i) {
       if (validExpiries[i] == expiry) {
@@ -499,6 +498,10 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   function getQueuedStrikes(uint boardId) external returns (QueuedStrikes memory) {
     // TODO: probably broken because of the array
     return queuedStrikes[boardId];
+  }
+
+  function getValidExpiries() public view returns (uint[] memory validExpiries) {
+    return ExpiryGenerator.getExpiries(NUM_WEEKLIES, NUM_MONTHLIES, block.timestamp, LAST_FRIDAYS);
   }
 
   //////////

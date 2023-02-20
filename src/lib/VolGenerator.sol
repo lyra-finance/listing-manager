@@ -1,17 +1,14 @@
 //SPDX-License-Identifier: ISC
 pragma solidity 0.8.16;
 
-import "openzeppelin/utils/math/SafeCast.sol";
-import "openzeppelin/utils/math/Math.sol";
-import "newport/synthetix/DecimalMath.sol";
-import "newport/synthetix/SignedDecimalMath.sol";
+import "../../lib/openzeppelin-contracts/contracts/utils/math/SafeCast.sol";
+import "../../lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
+import "../../lib/lyra-utils/src/decimals/DecimalMath.sol";
+import "../../lib/lyra-utils/src/decimals/SignedDecimalMath.sol";
 
-// todo: maybe use the new Black76 and FixedPointMathLib and get those audited
-import "newport/libraries/FixedPointMathLib.sol";
-import "lyra-utils/arrays/MemoryBinarySearch.sol";
-
-// TODO: Remove before push
-import "forge-std/console.sol";
+// TODO: use the new FixedPointMathLib
+import "../../lib/lyra-utils/src/math/FixedPointMathLib.sol";
+import "../../lib/lyra-utils/src/arrays/MemoryBinarySearch.sol";
 
 /**
  * @title Automated vol generator
@@ -60,7 +57,7 @@ library VolGenerator {
     uint baseIv,
     Board memory shortDatedBoard,
     Board memory longDatedBoard
-  ) public pure returns (uint newSkew) {
+  ) internal pure returns (uint newSkew) {
     // get matching skews of adjacent boards
     uint shortDatedSkew = getSkewForLiveBoard(newStrike, shortDatedBoard);
 
@@ -91,7 +88,7 @@ library VolGenerator {
    * @return newSkew Estimated skew of the new strike
    */
   function getSkewForNewBoard(uint newStrike, uint tTarget, uint baseIv, uint spot, Board memory edgeBoard)
-    public
+    internal
     pure
     returns (uint newSkew)
   {
@@ -114,7 +111,7 @@ library VolGenerator {
    * @param liveBoard Board details of the live board
    * @return newSkew Estimated skew of the new strike
    */
-  function getSkewForLiveBoard(uint newStrike, Board memory liveBoard) public pure returns (uint newSkew) {
+  function getSkewForLiveBoard(uint newStrike, Board memory liveBoard) internal pure returns (uint newSkew) {
     uint[] memory strikePrices = liveBoard.orderedStrikePrices;
     uint[] memory skews = liveBoard.orderedSkews;
 
@@ -283,7 +280,7 @@ library VolGenerator {
    * @param spot dollar Chainlink spot, 18 decimals
    * @param tAnnualized annualized time-to-expiry, 18 decimals
    */
-  function strikeToMoneyness(uint strike, uint spot, uint tAnnualized) public pure returns (int moneyness) {
+  function strikeToMoneyness(uint strike, uint spot, uint tAnnualized) internal pure returns (int moneyness) {
     unchecked {
       moneyness = int(strike.divideDecimal(spot)).ln().divideDecimal(int(Math.sqrt(tAnnualized * DecimalMath.UNIT)));
     }
@@ -296,7 +293,7 @@ library VolGenerator {
    * @param spot dollar Chainlink spot, 18 decimals
    * @param tAnnualized annualized time-to-expiry, 18 decimals
    */
-  function moneynessToStrike(int moneyness, uint spot, uint tAnnualized) public pure returns (uint strike) {
+  function moneynessToStrike(int moneyness, uint spot, uint tAnnualized) internal pure returns (uint strike) {
     unchecked {
       strike = moneyness.multiplyDecimal(int(Math.sqrt(tAnnualized * DecimalMath.UNIT))).exp().multiplyDecimal(spot);
     }
@@ -308,14 +305,14 @@ library VolGenerator {
    * @param skew The volatility skew of the given strike.
    * @return variance Variance of the given strike.
    */
-  function getVariance(uint baseIv, uint skew) public pure returns (uint variance) {
+  function getVariance(uint baseIv, uint skew) internal pure returns (uint variance) {
     // todo: good candidate for a standalone Lyra-util library
     variance = baseIv.multiplyDecimal(skew);
     return variance.multiplyDecimal(variance);
   }
 
   function sqrtWeightedAvg(uint leftVal, uint leftWeight, uint rightWeight, uint denominator)
-    public
+    internal
     pure
     returns (uint)
   {

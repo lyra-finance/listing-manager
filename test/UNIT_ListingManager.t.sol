@@ -13,7 +13,6 @@ contract ListingManagerTest is ListingManagerTestBase {
   ///////////
   // Setup //
   ///////////
-  
   function testGetNewBoardData() public {
     uint expiryToQueue = ExpiryGenerator.getNextFriday(block.timestamp + 1 weeks);
     listingManager.queueNewBoard(expiryToQueue);

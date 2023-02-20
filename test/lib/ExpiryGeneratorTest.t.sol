@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: ISC
 pragma solidity 0.8.16;
 
-import "openzeppelin/utils/Arrays.sol";
+import "../../lib/openzeppelin-contracts/contracts/utils/Arrays.sol";
 import "src/lib/ExpiryGenerator.sol";
 import "forge-std/Test.sol";
 import "forge-std/StdJson.sol";

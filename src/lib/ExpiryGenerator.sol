@@ -1,10 +1,8 @@
 //SPDX-License-Identifier: ISC
 pragma solidity 0.8.16;
 
-import "openzeppelin/utils/Arrays.sol";
-import "lyra-utils/arrays/UnorderedMemoryArray.sol";
-
-import "forge-std/console.sol";
+import "../../lib/openzeppelin-contracts/contracts/utils/Arrays.sol";
+import "../../lib/lyra-utils/src/arrays/UnorderedMemoryArray.sol";
 
 /**
  * @title Automated Expiry Generator
@@ -26,7 +24,7 @@ library ExpiryGenerator {
    * @return expiries The valid expiries for the given parameters
    */
   function getExpiries(uint nWeeklies, uint nMonthlies, uint timestamp, uint[] storage monthlyExpiries)
-    public
+    internal
     view
     returns (uint[] memory expiries)
   {
@@ -77,7 +75,7 @@ library ExpiryGenerator {
    * @param timestamp The current timestamp
    * @return Timestamp the timestamp of the closest friday to the current timestamp,
    */
-  function getNextFriday(uint timestamp) public view returns (uint) {
+  function getNextFriday(uint timestamp) internal view returns (uint) {
     // by adding the offset you make the friday 8am the reference point - so when you mod, you'll round to the nearest friday
     return timestamp - ((timestamp - MOD_OFFSET) % 7 days) + 7 days;
   }

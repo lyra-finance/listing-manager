@@ -39,10 +39,22 @@ contract ListingManager_Views_Test is ListingManagerTestBase {
     assertTrue(false);
   }
 
-
   // helpers
   function addBoardWithStrikes() internal returns(uint expiry) {
     expiry = ExpiryGenerator.getNextFriday(block.timestamp) + 1 weeks;
     listingManager.queueNewBoard(expiry);
+    assertTrue(false);
+  }
+
+  //////////////////////
+  // getValidExpiries //
+  //////////////////////
+  function testGetValidExpiries() public {
+    uint[] memory validExpiries = listingManager.getValidExpiries();
+    console.log("Valid expiries:");
+    for (uint i = 0; i < validExpiries.length; i++) {
+      console.log("-", validExpiries[i]);
+    }
+    // TODO: vm.warp to specific times to test?
   }
 }
