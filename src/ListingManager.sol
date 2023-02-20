@@ -101,12 +101,14 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   ///////////
   function setRiskCouncil(address _riskCouncil) external onlyOwner {
     riskCouncil = _riskCouncil;
+    emit LM_RiskCouncilSet(_riskCouncil, msg.sender);
   }
 
   function setQueueParams(uint _boardQueueTime, uint _strikeQueueTime, uint _queueStaleTime) external onlyOwner {
     boardQueueTime = _boardQueueTime;
     strikeQueueTime = _strikeQueueTime;
     queueStaleTime = _queueStaleTime;
+    emit LM_QueueParamsSet(_boardQueueTime, _strikeQueueTime, _queueStaleTime, msg.sender);
   }
 
   /////////////////////
@@ -115,11 +117,13 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
 
   /// @notice Forcefully remove the QueuedStrikes for given boardId
   function vetoStrikeUpdate(uint boardId) external onlyRiskCouncil {
+    emit LM_StrikeUpdateVetoed(boardId, queuedStrikes[boardId], msg.sender);
     delete queuedStrikes[boardId];
   }
 
   /// @notice Forcefully remove the QueuedBoard for given expiry
   function vetoQueuedBoard(uint expiry) external onlyRiskCouncil {
+    emit LM_BoardVetoed(expiry, queuedBoards[expiry], msg.sender);
     delete queuedBoards[expiry];
   }
 
@@ -165,8 +169,8 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
         queuedStrikes[boardId].strikesToAdd[i].skew
       );
     }
-    // TODO: emit event for all strikes (we dont actually get an id back from the market)
 
+    emit LM_QueuedStrikeExecuted(boardId, queueStrikes, msg.sender);
     delete queuedStrikes[boardId];
   }
 
@@ -206,8 +210,8 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
 
     uint boardId =
       governanceWrapper.createOptionBoard(optionMarket, queueBoard.expiry, queueBoard.baseIv, strikes, skews, false);
-    // TODO: emit event
 
+    emit LM_QueuedBoardExecuted(boardId, queueBoard, msg.sender);
     delete queuedBoards[expiry];
   }
 
@@ -544,4 +548,22 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     }
     _;
   }
+
+  /////////////
+  // Events ///
+  /////////////
+
+  event LM_RiskCouncilSet(address riskCouncil, address owner);
+
+  event LM_QueueParamsSet(uint boardQueuedTime, uint strikesQueuedTime, uint staleTime, address executor);
+
+  event LM_StrikeUpdateVetoed(uint boardId, QueuedStrikes exectuedStrike, address executor);
+
+  event LM_BoardVetoed(uint expiry, QueuedBoard queuedBoards, address executor);
+
+  event LM_QueuedStrikeExecuted(uint boardId, QueuedStrikes strikes, address executor);
+
+  event LM_QueuedBoardExecuted(uint expiry, QueuedBoard board,address executor);
+
+  event StrikesAdded(uint boardId, uint[] strikePrices, uint[] skews);
 }

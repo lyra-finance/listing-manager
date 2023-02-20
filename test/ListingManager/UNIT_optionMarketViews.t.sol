@@ -12,7 +12,9 @@ contract ListingManager_OptionMarketViews_Test is ListingManagerTestBase {
 
   // TODO: exhaustive test writeup
   function testGetBoardDetails() public {
-    listingManager.getBoardDetails(1);
+    ListingManager.BoardDetails memory boardDetails = listingManager.getBoardDetails(1);
+    console.log('expiry', boardDetails.expiry);
+    console.log('baseIv', boardDetails.baseIv);
   }
 
   ////////////////////////
@@ -29,10 +31,12 @@ contract ListingManager_OptionMarketViews_Test is ListingManagerTestBase {
   ////////////////
 
   function testCBIsActive() public {
-    assertTrue(false);
+    vm.mockCall(address(liquidityPool), abi.encodeWithSelector(ILiquidityPool.CBTimestamp.selector), abi.encode(block.timestamp + 4 weeks));
+    assertEq(listingManager.TEST_isCBActive(), true);
   }
 
   function testCBIsNotActive() public {
-    assertTrue(false);
+    vm.mockCall(address(liquidityPool), abi.encodeWithSelector(ILiquidityPool.CBTimestamp.selector), abi.encode(0));
+    assertEq(listingManager.TEST_isCBActive(), false);
   }
 }
