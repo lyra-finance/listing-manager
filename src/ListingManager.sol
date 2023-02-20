@@ -18,7 +18,6 @@ import "./lib/ExpiryGenerator.sol";
 import "./ListingManagerLibrarySettings.sol";
 import "../lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
 
-
 contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   using DecimalMath for uint;
 
@@ -335,11 +334,10 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   }
 
   /// @notice Gets the closest board on both sides of the given expiry, converting them to the format required for the vol generator
-  function _fetchSurroundingBoards(BoardDetails[] memory boardDetails, uint expiry)
-    internal
-    view
-    returns (VolGenerator.Board memory shortDated, VolGenerator.Board memory longDated)
-  {
+  function _fetchSurroundingBoards(
+    BoardDetails[] memory boardDetails,
+    uint expiry
+  ) internal view returns (VolGenerator.Board memory shortDated, VolGenerator.Board memory longDated) {
     if (boardDetails.length == 0) {
       revert("no boards");
     }

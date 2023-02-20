@@ -120,11 +120,11 @@ library StrikePriceGenerator {
     }
   }
 
-  function getStrikeRange(uint tTarget, uint spot, uint maxScaledMoneyness)
-    public
-    pure
-    returns (uint minStrike, uint maxStrike)
-  {
+  function getStrikeRange(
+    uint tTarget,
+    uint spot,
+    uint maxScaledMoneyness
+  ) public pure returns (uint minStrike, uint maxStrike) {
     uint strikeRange = int(maxScaledMoneyness.multiplyDecimal(Math.sqrt(tTarget * DecimalMath.UNIT))).exp();
     return (spot.divideDecimal(strikeRange), spot.multiplyDecimal(strikeRange));
   }
@@ -186,7 +186,6 @@ library StrikePriceGenerator {
       remainNumStrikes--;
     }
 
-    bool isLeft = true;
     uint nextStrike;
     uint lastStrike;
     uint stepFromAtm;
@@ -194,7 +193,7 @@ library StrikePriceGenerator {
     while (remainNumStrikes > 0) {
       stepFromAtm = (1 + (i / 2)) * step;
       lastStrike = nextStrike;
-      if (isLeft) {
+      if (i % 2 == 0) {
         // prioritize left strike
         nextStrike = (atmStrike > stepFromAtm) ? atmStrike - stepFromAtm : 0;
       } else {
@@ -211,7 +210,6 @@ library StrikePriceGenerator {
         return (newStrikes, numAdded);
       }
 
-      isLeft = !isLeft;
       i++;
     }
   }

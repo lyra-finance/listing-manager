@@ -87,11 +87,13 @@ library VolGenerator {
    * @param edgeBoard Board details of the board with a shorter or longer time to expiry
    * @return newSkew Estimated skew of the new strike
    */
-  function getSkewForNewBoard(uint newStrike, uint tTarget, uint baseIv, uint spot, Board memory edgeBoard)
-    public
-    pure
-    returns (uint newSkew)
-  {
+  function getSkewForNewBoard(
+    uint newStrike,
+    uint tTarget,
+    uint baseIv,
+    uint spot,
+    Board memory edgeBoard
+  ) public pure returns (uint newSkew) {
     return _extrapolateSkewAcrossBoards(
       newStrike,
       edgeBoard.orderedStrikePrices,
@@ -311,11 +313,12 @@ library VolGenerator {
     return variance.multiplyDecimal(variance);
   }
 
-  function sqrtWeightedAvg(uint leftVal, uint leftWeight, uint rightWeight, uint denominator)
-    public
-    pure
-    returns (uint)
-  {
+  function sqrtWeightedAvg(
+    uint leftVal,
+    uint leftWeight,
+    uint rightWeight,
+    uint denominator
+  ) public pure returns (uint) {
     uint weightedAvg = leftVal.multiplyDecimal(leftWeight) + (DecimalMath.UNIT - leftVal).multiplyDecimal(rightWeight);
 
     return Math.sqrt(weightedAvg.divideDecimal(denominator) * DecimalMath.UNIT);

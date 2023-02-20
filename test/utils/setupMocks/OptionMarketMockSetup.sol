@@ -109,7 +109,13 @@ contract OptionMarketMockSetup is Test {
       address(optionMarket),
       abi.encodeWithSelector(IOptionMarket.getBoardAndStrikeDetails.selector),
       abi.encode(
-        IOptionMarket.OptionBoard({id: 1, expiry: block.timestamp + 1 weeks, iv: 1 ether, frozen: false, strikeIds: strikeIds}),
+        IOptionMarket.OptionBoard({
+          id: 1,
+          expiry: block.timestamp + 1 weeks,
+          iv: 1 ether,
+          frozen: false,
+          strikeIds: strikeIds
+        }),
         boardStrikes,
         strikeToBaseReturnedRatios,
         0,
