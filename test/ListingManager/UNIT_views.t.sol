@@ -11,7 +11,6 @@ contract ListingManager_Views_Test is ListingManagerTestBase {
   /////////////////////
 
   function testGetQueuedBoard() public {
-    // TODO: get queued board with strikes and assert data is correct
     uint expiry = addBoardWithStrikes();
     ListingManager.QueuedBoard memory queued = listingManager.getQueuedBoard(expiry);
     assertEq(queued.expiry, ExpiryGenerator.getNextFriday(block.timestamp) + 1 weeks);
@@ -19,8 +18,7 @@ contract ListingManager_Views_Test is ListingManagerTestBase {
   }
 
   function testCannotGetDeletedQueuedBoard() public {
-    // TODO: get queued board after deleting it
-     uint expiry = addBoardWithStrikes();
+    uint expiry = addBoardWithStrikes();
     ListingManager.QueuedBoard memory queued = listingManager.getQueuedBoard(expiry);
     assertEq(queued.expiry, ExpiryGenerator.getNextFriday(block.timestamp) + 1 weeks);
     assertEq(queued.strikesToAdd.length, 13, "length of strikes does not match expected");  
@@ -41,12 +39,11 @@ contract ListingManager_Views_Test is ListingManagerTestBase {
 
   function testGetQueuedStrikes() public {
     // TODO: get queued strikes for a board, and assert data is correct
-    listingManager.getQueuedStrikes(1);
+    assertTrue(false);
   }
 
   function testGetDeletedQueuedStrikes() public {
     // TODO: get queued strikes after deleting it
-
     assertTrue(false);
   }
 

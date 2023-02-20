@@ -471,11 +471,14 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   function getBoardDetails(uint boardId) public view returns (BoardDetails memory boardDetails) {
     (IOptionMarket.OptionBoard memory board, IOptionMarket.Strike[] memory strikes,,,) =
       optionMarket.getBoardAndStrikeDetails(boardId);
+
+    IOptionGreekCache.BoardGreeksView memory boardGreeks = optionGreekCache.getBoardGreeksView(boardId);
+
     StrikeDetails[] memory strikeDetails = new StrikeDetails[](strikes.length);
     for (uint i = 0; i < strikes.length; ++i) {
-      strikeDetails[i] = StrikeDetails({strikePrice: strikes[i].strikePrice, skew: strikes[i].skew});
+      strikeDetails[i] = StrikeDetails({strikePrice: strikes[i].strikePrice, skew: boardGreeks.skewGWAVs[i]});
     }
-    return BoardDetails({expiry: board.expiry, baseIv: board.iv, strikes: strikeDetails});
+    return BoardDetails({expiry: board.expiry, baseIv: boardGreeks.ivGWAV, strikes: strikeDetails});
   }
 
   function _getSpotPrice() internal view returns (uint spotPrice) {
