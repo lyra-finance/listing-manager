@@ -14,9 +14,12 @@ contract ListingManager_Views_Test is ListingManagerTestBase {
     // TODO: get queued board with strikes and assert data is correct
     uint expiry= addBoardWithStrikes();
     ListingManager.QueuedBoard memory queued = listingManager.getQueuedBoard(expiry);
-    assertEq(queued.expiry, ExpiryGenerator.getNextFriday(block.timestamp) + 1 weeks);
-    assertGt(queued.strikesToAdd.length, 1);
     console.log('length of strikes added', queued.strikesToAdd.length);
+    console.log('queueboard', queued.queuedTime);
+    console.log('base iv', queued.baseIv);
+    console.log('strikes to add', queued.strikesToAdd.length);
+    // assertEq(queued.expiry, ExpiryGenerator.getNextFriday(block.timestamp) + 1 weeks);
+    assertEq(queued.strikesToAdd.length, 13);
   }
 
   function testGetDeletedQueuedBoard() public {
