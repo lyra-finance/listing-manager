@@ -151,7 +151,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     }
 
     if (queuedStrikes[boardId].queuedTime + strikeQueueTime > block.timestamp) {
-      revert("too early");
+      revert(LM_TooEarlyToExecuteStrike(boardId, queuedStrikes[boardId].queuedTime, block.timestamp));
     }
     _executeQueuedStrikes(boardId);
   }
@@ -185,12 +185,12 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     QueuedBoard memory queuedBoard = queuedBoards[expiry];
     // if it is stale (staleQueueTime), delete the entry
     if (queuedBoard.queuedTime + boardQueueTime + queueStaleTime > block.timestamp) {
-      revert("board stale");
+      revert(LM_BoardStale(expiry, queueStaleTime, block.timestamp));
     }
 
     // execute the queued board if the required time has passed
     if (queuedBoard.queuedTime + boardQueueTime > block.timestamp) {
-      revert("too early");
+      revert(LM_TooEarlyToExecuteBoard(expiry, queuedBoard.queuedTime, block.timestamp));
     }
 
     _executeQueuedBoard(expiry);
@@ -223,17 +223,17 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   // and then add to queue
   function findAndQueueStrikesForBoard(uint boardId) external {
     if (isCBActive()) {
-      revert("CB active");
+      revert(LM_CBActive(block.timestamp));
     }
 
     if (queuedStrikes[boardId].boardId != 0) {
-      revert("strikes already queued");
+      revert(LM_strikesAlreadyQueued(boardId));
     }
 
     BoardDetails memory boardDetails = getBoardDetails(boardId);
 
     if (boardDetails.expiry < block.timestamp + NEW_STRIKE_MIN_EXPIRY) {
-      revert("too close to expiry");
+      revert(LM_TooCloseToExpiry(boardDetails.expiry, boardId));
     }
 
     _queueNewStrikes(boardId, boardDetails);
@@ -269,13 +269,13 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
 
   function queueNewBoard(uint newExpiry) external {
     if (isCBActive()) {
-      revert("CB active");
+      revert(LM_CBActive(block.timestamp));
     }
 
     _validateNewBoardExpiry(newExpiry);
 
     if (queuedBoards[newExpiry].expiry != 0) {
-      revert("board already queued");
+      revert(LM_BoardAlreadyQueued(newExpiry));
     }
 
     _queueNewBoard(newExpiry);
@@ -283,7 +283,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
 
   function _validateNewBoardExpiry(uint expiry) internal view {
     if (expiry < block.timestamp + NEW_BOARD_MIN_EXPIRY) {
-      revert("expiry too short");
+      revert(LM_ExpiryTooShort(expiry, NEW_BOARD_MIN_EXPIRY));
     }
 
     uint[] memory validExpiries = getValidExpiries();
@@ -294,7 +294,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
         return;
       }
     }
-    revert("expiry doesn't match format");
+    revert(LM_ExpiryDoesntMatchFormat(expiry));
   }
 
   /// @dev Internal queueBoard function, assumes the expiry is valid (but does not know if the expiry is already used)
@@ -343,7 +343,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     returns (VolGenerator.Board memory shortDated, VolGenerator.Board memory longDated)
   {
     if (boardDetails.length == 0) {
-      revert("no boards");
+      revert(LM_NoBoards());
     }
 
     uint shortIndex = type(uint).max;
@@ -362,7 +362,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
           longIndex = i;
         }
       } else {
-        revert("expiry exists");
+        revert(LM_ExpiryExists(expiry));
       }
     }
 
@@ -548,7 +548,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   ///////////////
   modifier onlyRiskCouncil() {
     if (msg.sender != riskCouncil) {
-      revert("only riskCouncil");
+      revert(LM_OnlyRiskCouncil(msg.sender));
     }
     _;
   }
@@ -570,4 +570,35 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   event LM_QueuedBoardExecuted(uint expiry, QueuedBoard board,address executor);
 
   event StrikesAdded(uint boardId, uint[] strikePrices, uint[] skews);
-}
+
+
+  ////////////
+  // Errors //
+  ////////////
+
+  error LM_ExpiryExists(uint expiry);
+
+  error LM_OnlyRiskCouncil(address sender);
+
+  error LM_TooEarlyToExecuteStrike(uint boardId, uint queuedTime, uint blockTime);
+
+  error LM_BoardStale(uint expiry, uint staleTime, uint blockTime);
+
+  error LM_TooEarlyToExecuteBoard(uint expiry, uint queuedTime, uint blockTime);
+
+  error LM_CBActive(uint blockTime);
+
+  error LM_TooCloseToExpiry(uint expiry, uint boardId);
+
+  error LM_BoardAlreadyQueued(uint expiry);
+
+  error LM_ExpiryDoesntMatchFormat(uint expiry);
+
+  error LM_ExpiryTooShort(uint expiry, uint minExpiry);
+
+  error LM_NoBoards();
+
+  error LM_ExpiryExists(uint expiry);
+
+  error LM_strikesAlreadyQueued(uint boardId);
+} 

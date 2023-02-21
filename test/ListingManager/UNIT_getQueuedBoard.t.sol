@@ -13,11 +13,10 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
   // _interpolateBoard //
   ///////////////////////
 
-  // TODO: test cases
-
   function testInterpolateBoardShortExpiry() public {
     // TODO: interpolates correctly for short expiry (1d)
     // - 3 strikes (OTM,ATM,ITM)
+
     assertTrue(false);
   }
 
