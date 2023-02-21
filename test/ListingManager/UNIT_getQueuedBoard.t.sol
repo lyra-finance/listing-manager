@@ -23,7 +23,9 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
     (, ListingManager.StrikeToAdd[] memory strikes) = listingManager.TEST_getNewBoardData(expiry);
 
     for(uint i; i < strikes.length; i++) {
+      console.log('strike price');
       console.log(strikes[i].strikePrice);
+      console.log('skew');
       console.log(strikes[i].skew);
     }
   }
