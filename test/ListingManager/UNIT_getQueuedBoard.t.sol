@@ -16,7 +16,7 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
   function testInterpolateBoardShortExpiry() public {
     // TODO: interpolates correctly for short expiry (1d)
     // - 3 strikes (OTM,ATM,ITM)
-    uint nextFriday = ExpiryGenerator.getNextFriday(block.timestamp + 1 weeks);
+    uint nextFriday = ExpiryGenerator.getNextFriday(block.timestamp + 2 weeks);
     vm.warp(nextFriday - 1 days);
 
     listingManager.queueNewBoard(nextFriday);
