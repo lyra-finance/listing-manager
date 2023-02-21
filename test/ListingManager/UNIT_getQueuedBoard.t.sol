@@ -56,7 +56,7 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
       console.log(strikes[i].strikePrice);
       console.log(strikes[i].skew);
     }
-    
+
     assertTrue(false);
   }
 

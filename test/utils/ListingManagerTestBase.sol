@@ -32,7 +32,7 @@ contract ListingManagerTestBase is Test, OptionMarketMockSetup {
     listingManager.setRiskCouncil(riskCouncil);
 
     OptionMarketMockSetup.mockDefaultBoard(optionMarket, greekCache);
-    mockSpotPrice(1500 ether);
+    mockSpotPrice(1300 ether);
   }
 
   function mockSpotPrice(uint spotPrice) internal {
