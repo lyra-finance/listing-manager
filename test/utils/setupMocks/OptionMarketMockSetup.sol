@@ -137,4 +137,104 @@ contract OptionMarketMockSetup is Test {
       )
     );
   }
+
+  function mockBoardWithThreeStrikes(IOptionMarket optionMarket, IOptionGreekCache greekCache, uint expiryOffset) public {
+    uint[] memory strikeIds = new uint[](3);
+    strikeIds[0] = DEFAULT_STRIKE_1.id;
+    strikeIds[1] = DEFAULT_STRIKE_2.id;
+    strikeIds[2] = DEFAULT_STRIKE_3.id;
+
+    uint[] memory skewGWAVs = new uint[](3);
+    skewGWAVs[0] = DEFAULT_SKEW_GWAVS[0];
+    skewGWAVs[1] = DEFAULT_SKEW_GWAVS[1];
+    skewGWAVs[2] = DEFAULT_SKEW_GWAVS[2];
+
+    uint[] memory strikeToBaseReturnedRatios = new uint[](3);
+
+    IOptionMarket.Strike[] memory boardStrikes = new IOptionMarket.Strike[](3);
+    boardStrikes[0] = DEFAULT_STRIKE_1;
+    boardStrikes[1] = DEFAULT_STRIKE_2;
+    boardStrikes[2] = DEFAULT_STRIKE_3;
+
+    uint[] memory liveBoards = new uint[](1);
+    liveBoards[0] = 1;
+
+    vm.mockCall(
+      address(optionMarket), abi.encodeWithSelector(IOptionMarket.getLiveBoards.selector), abi.encode(liveBoards)
+    );
+
+    vm.mockCall(
+      address(optionMarket),
+      abi.encodeWithSelector(IOptionMarket.getBoardAndStrikeDetails.selector),
+      abi.encode(
+        IOptionMarket.OptionBoard({id: 1, expiry: block.timestamp + expiryOffset, iv: 1 ether, frozen: false, strikeIds: strikeIds}),
+        boardStrikes,
+        strikeToBaseReturnedRatios,
+        0,
+        1 ether
+      )
+    );
+
+    IOptionGreekCache.StrikeGreeks[] memory strikeGreeks = new IOptionGreekCache.StrikeGreeks[](3);
+    strikeGreeks[0] = DEFAULT_STRIKE_GREEKS_1;
+    strikeGreeks[1] = DEFAULT_STRIKE_GREEKS_2;
+    strikeGreeks[2] = DEFAULT_STRIKE_GREEKS_3;
+
+    vm.mockCall(
+      address(greekCache),
+      abi.encodeWithSelector(IOptionGreekCache.getBoardGreeksView.selector),
+      abi.encode(
+        IOptionGreekCache.BoardGreeksView({
+          boardGreeks: IOptionGreekCache.NetGreeks({netDelta: 0, netStdVega: 0, netOptionValue: 0}),
+          ivGWAV: 1 ether,
+          strikeGreeks: strikeGreeks,
+          skewGWAVs: skewGWAVs
+        })
+      )
+    );
+  }
+
+  function mockBoardWithZeroStrikes(IOptionMarket optionMarket, IOptionGreekCache greekCache, uint expiryOffset) public {
+    uint[] memory strikeIds = new uint[](0);
+
+    uint[] memory skewGWAVs = new uint[](0);
+
+    uint[] memory strikeToBaseReturnedRatios = new uint[](0);
+
+    IOptionMarket.Strike[] memory boardStrikes = new IOptionMarket.Strike[](0);
+
+    uint[] memory liveBoards = new uint[](1);
+    liveBoards[0] = 1;
+
+    vm.mockCall(
+      address(optionMarket), abi.encodeWithSelector(IOptionMarket.getLiveBoards.selector), abi.encode(liveBoards)
+    );
+
+    vm.mockCall(
+      address(optionMarket),
+      abi.encodeWithSelector(IOptionMarket.getBoardAndStrikeDetails.selector),
+      abi.encode(
+        IOptionMarket.OptionBoard({id: 1, expiry: block.timestamp + expiryOffset, iv: 1 ether, frozen: false, strikeIds: strikeIds}),
+        boardStrikes,
+        strikeToBaseReturnedRatios,
+        0,
+        1 ether
+      )
+    );
+
+    IOptionGreekCache.StrikeGreeks[] memory strikeGreeks = new IOptionGreekCache.StrikeGreeks[](0);
+
+    vm.mockCall(
+      address(greekCache),
+      abi.encodeWithSelector(IOptionGreekCache.getBoardGreeksView.selector),
+      abi.encode(
+        IOptionGreekCache.BoardGreeksView({
+          boardGreeks: IOptionGreekCache.NetGreeks({netDelta: 0, netStdVega: 0, netOptionValue: 0}),
+          ivGWAV: 1 ether,
+          strikeGreeks: strikeGreeks,
+          skewGWAVs: skewGWAVs
+        })
+      )
+    );
+  }
 }

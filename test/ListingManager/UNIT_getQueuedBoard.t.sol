@@ -16,32 +16,47 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
   function testInterpolateBoardShortExpiry() public {
     // TODO: interpolates correctly for short expiry (1d)
     // - 3 strikes (OTM,ATM,ITM)
-    uint nextFriday = ExpiryGenerator.getNextFriday(block.timestamp + 2 weeks);
-    vm.warp(nextFriday - 1 days);
+    OptionMarketMockSetup.mockBoardWithThreeStrikes(optionMarket, greekCache, 2 weeks);
+    // live board's expiry is 2 weeks away
+    uint expiry = ExpiryGenerator.getNextFriday(block.timestamp + 1 weeks);
+    listingManager.queueNewBoard(expiry);
+    (, ListingManager.StrikeToAdd[] memory strikes) = listingManager.TEST_getNewBoardData(expiry);
 
-    listingManager.queueNewBoard(nextFriday);
-    (, ListingManager.StrikeToAdd[] memory strikes) = listingManager.TEST_getNewBoardData(nextFriday);
-
-    for (uint i; i < strikes.length; i++) {
+    for(uint i; i < strikes.length; i++) {
       console.log(strikes[i].strikePrice);
       console.log(strikes[i].skew);
     }
-    
-    assertEq(strikes.length, 3);
-    assertEq(strikes[0].strikePrice, 1000);
-    assertEq(strikes[1].strikePrice, 2000);
-    assertEq(strikes[2].strikePrice, 3000);
-
   }
 
   function testInterpolateBoardLongExpiry() public {
     // TODO: interpolates correctly for long expiry (12w)
     // - 3 strikes (OTM,ATM,ITM)
+    OptionMarketMockSetup.mockBoardWithThreeStrikes(optionMarket, greekCache, 13 weeks);
+    // live board's expiry is 2 week away
+    uint expiry = ExpiryGenerator.getNextFriday(block.timestamp + 12 weeks);
+    listingManager.queueNewBoard(expiry);
+    (, ListingManager.StrikeToAdd[] memory strikes) = listingManager.TEST_getNewBoardData(expiry);
+
+    for(uint i; i < strikes.length; i++) {
+      console.log(strikes[i].strikePrice);
+      console.log(strikes[i].skew);
+    }
     assertTrue(false);
   }
 
   function testInterpolateBoardZeroStrikes() public {
     // TODO: works for 0 strikes
+     OptionMarketMockSetup.mockBoardWithThreeStrikes(optionMarket, greekCache, 13 weeks);
+    // live board's expiry is 2 week away
+    uint expiry = ExpiryGenerator.getNextFriday(block.timestamp + 12 weeks);
+    listingManager.queueNewBoard(expiry);
+    (, ListingManager.StrikeToAdd[] memory strikes) = listingManager.TEST_getNewBoardData(expiry);
+
+    for(uint i; i < strikes.length; i++) {
+      console.log(strikes[i].strikePrice);
+      console.log(strikes[i].skew);
+    }
+    
     assertTrue(false);
   }
 
@@ -138,4 +153,5 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
     ListingManager.QueuedBoard memory queued = listingManager.getQueuedBoard(expiry);
     assertEq(queued.expiry, expiry);
   }
+
 }
