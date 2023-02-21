@@ -38,13 +38,43 @@ contract ListingManager_Views_Test is ListingManagerTestBase {
   ////////////////////////
 
   function testGetQueuedStrikes() public {
-    // TODO: get queued strikes for a board, and assert data is correct
-    assertTrue(false);
+    // get the live board from mock option market contract
+    uint[] memory liveBoards = optionMarket.getLiveBoards();
+    
+    ListingManager.QueuedStrikes memory queuedStrikes = listingManager.getQueuedStrikes(liveBoards[0]);
+
+    assertEq(queuedStrikes.strikesToAdd.length, 0, "strikes already queued");
+    
+    // added strikes to live board
+    listingManager.findAndQueueStrikesForBoard(liveBoards[0]);
+    ListingManager.QueuedStrikes memory curQueuedStrikes = listingManager.getQueuedStrikes(liveBoards[0]);
+    
+    assertGt(curQueuedStrikes.strikesToAdd.length, queuedStrikes.strikesToAdd.length, "strikes not queued");
   }
 
   function testGetDeletedQueuedStrikes() public {
-    // TODO: get queued strikes after deleting it
-    assertTrue(false);
+    // get the live board from mock option market contract
+    uint[] memory liveBoards = optionMarket.getLiveBoards();
+    
+    ListingManager.QueuedStrikes memory queuedStrikes = listingManager.getQueuedStrikes(liveBoards[0]);
+
+    assertEq(queuedStrikes.strikesToAdd.length, 0, "strikes already queued");
+
+    // added strikes to live board
+    listingManager.findAndQueueStrikesForBoard(liveBoards[0]);
+    ListingManager.QueuedStrikes memory curQueuedStrikes = listingManager.getQueuedStrikes(liveBoards[0]);
+    
+    assertGt(curQueuedStrikes.strikesToAdd.length, queuedStrikes.strikesToAdd.length, "strikes not queued");
+    assertEq(curQueuedStrikes.boardId, liveBoards[0], "board id not set");
+    assertGt(curQueuedStrikes.queuedTime, 0, "queued time not set");
+    vm.prank(riskCouncil);
+    listingManager.vetoStrikeUpdate(liveBoards[0]);
+
+    curQueuedStrikes = listingManager.getQueuedStrikes(liveBoards[0]);
+
+    assertEq(curQueuedStrikes.strikesToAdd.length, 0, "strikes not deleted");
+    assertEq(curQueuedStrikes.boardId, 0, "board id not nulled");
+    assertEq(curQueuedStrikes.queuedTime, 0, "queued time not nulled");
   }
 
   // helpers
