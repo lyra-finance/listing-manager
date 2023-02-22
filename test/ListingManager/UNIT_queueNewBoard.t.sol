@@ -22,10 +22,10 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
     listingManager.queueNewBoard(expiry);
     (, ListingManager.StrikeToAdd[] memory strikes) = listingManager.TEST_getNewBoardData(expiry);
 
-    for(uint i; i < strikes.length; i++) {
-      console.log('strike price');
+    for (uint i; i < strikes.length; i++) {
+      console.log("strike price");
       console.log(strikes[i].strikePrice);
-      console.log('skew');
+      console.log("skew");
       console.log(strikes[i].skew);
     }
   }
@@ -39,7 +39,7 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
     listingManager.queueNewBoard(expiry);
     (, ListingManager.StrikeToAdd[] memory strikes) = listingManager.TEST_getNewBoardData(expiry);
 
-    for(uint i; i < strikes.length; i++) {
+    for (uint i; i < strikes.length; i++) {
       console.log(strikes[i].strikePrice);
       console.log(strikes[i].skew);
     }
@@ -48,13 +48,13 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
 
   function testInterpolateBoardZeroStrikes() public {
     // TODO: works for 0 strikes
-     OptionMarketMockSetup.mockBoardWithThreeStrikes(optionMarket, greekCache, 13 weeks);
+    OptionMarketMockSetup.mockBoardWithThreeStrikes(optionMarket, greekCache, 13 weeks);
     // live board's expiry is 2 week away
     uint expiry = ExpiryGenerator.getNextFriday(block.timestamp + 12 weeks);
     listingManager.queueNewBoard(expiry);
     (, ListingManager.StrikeToAdd[] memory strikes) = listingManager.TEST_getNewBoardData(expiry);
 
-    for(uint i; i < strikes.length; i++) {
+    for (uint i; i < strikes.length; i++) {
       console.log(strikes[i].strikePrice);
       console.log(strikes[i].skew);
     }
@@ -128,8 +128,12 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
   function testQueueNewBoard() public {
     // set the CB to revert
     uint expiry = ExpiryGenerator.getNextFriday(block.timestamp);
-    vm.mockCall(address(liquidityPool), abi.encodeWithSelector(ILiquidityPool.CBTimestamp.selector), abi.encode(block.timestamp + 4 weeks));
-    vm.expectRevert(abi.encodeWithSelector(ListingManager.LM_CBActive.selector, block.timestamp));   
+    vm.mockCall(
+      address(liquidityPool),
+      abi.encodeWithSelector(ILiquidityPool.CBTimestamp.selector),
+      abi.encode(block.timestamp + 4 weeks)
+    );
+    vm.expectRevert(abi.encodeWithSelector(ListingManager.LM_CBActive.selector, block.timestamp));
     listingManager.queueNewBoard(expiry);
 
     // // set the CB to not revert
@@ -155,5 +159,4 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
     ListingManager.QueuedBoard memory queued = listingManager.getQueuedBoard(expiry);
     assertEq(queued.expiry, expiry);
   }
-
 }

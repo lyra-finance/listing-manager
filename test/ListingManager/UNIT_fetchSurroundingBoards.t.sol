@@ -28,8 +28,5 @@ contract ListingManager_fetchSurroundingBoards_Test is ListingManagerTestBase {
   function testFetchSurroundingBoards() public {
     ListingManager.BoardDetails[] memory details;
     listingManager.TEST_fetchSurroundingBoards(details, 12000);
-
-    
-
   }
 }

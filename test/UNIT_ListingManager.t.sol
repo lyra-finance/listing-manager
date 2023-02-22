@@ -8,7 +8,6 @@ import "./mocks/LyraContractMocks.sol";
 import "./utils/ListingManagerTestBase.sol";
 import "src/lib/ExpiryGenerator.sol";
 
-
 contract ListingManagerTest is ListingManagerTestBase {
   ///////////
   // Setup //
@@ -23,11 +22,11 @@ contract ListingManagerTest is ListingManagerTestBase {
   }
 
   function testCreateAndAddNewBoard() public {
-    uint expiry = block.timestamp + 4 weeks;
+    uint expiry = block.timestamp + 2 weeks;
     expiry = ExpiryGenerator.getNextFriday(expiry);
     listingManager.queueNewBoard(expiry);
     (, ListingManager.StrikeToAdd[] memory strikes) = listingManager.TEST_getNewBoardData(expiry);
-    
+
     assertEq(strikes.length, 11); // why 11?
   }
 }
