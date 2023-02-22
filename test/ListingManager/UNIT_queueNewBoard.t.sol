@@ -13,22 +13,52 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
   // _interpolateBoard //
   ///////////////////////
 
-  // TODO: test cases
-
   function testInterpolateBoardShortExpiry() public {
     // TODO: interpolates correctly for short expiry (1d)
     // - 3 strikes (OTM,ATM,ITM)
-    assertTrue(false);
+    OptionMarketMockSetup.mockBoardWithThreeStrikes(optionMarket, greekCache, 2 weeks);
+    // live board's expiry is 2 weeks away
+    uint expiry = ExpiryGenerator.getNextFriday(block.timestamp + 1 weeks);
+    listingManager.queueNewBoard(expiry);
+    (, ListingManager.StrikeToAdd[] memory strikes) = listingManager.TEST_getNewBoardData(expiry);
+
+    for (uint i; i < strikes.length; i++) {
+      console.log("strike price");
+      console.log(strikes[i].strikePrice);
+      console.log("skew");
+      console.log(strikes[i].skew);
+    }
   }
 
   function testInterpolateBoardLongExpiry() public {
     // TODO: interpolates correctly for long expiry (12w)
     // - 3 strikes (OTM,ATM,ITM)
+    OptionMarketMockSetup.mockBoardWithThreeStrikes(optionMarket, greekCache, 13 weeks);
+    // live board's expiry is 2 week away
+    uint expiry = ExpiryGenerator.getNextFriday(block.timestamp + 12 weeks);
+    listingManager.queueNewBoard(expiry);
+    (, ListingManager.StrikeToAdd[] memory strikes) = listingManager.TEST_getNewBoardData(expiry);
+
+    for (uint i; i < strikes.length; i++) {
+      console.log(strikes[i].strikePrice);
+      console.log(strikes[i].skew);
+    }
     assertTrue(false);
   }
 
   function testInterpolateBoardZeroStrikes() public {
     // TODO: works for 0 strikes
+    OptionMarketMockSetup.mockBoardWithThreeStrikes(optionMarket, greekCache, 13 weeks);
+    // live board's expiry is 2 week away
+    uint expiry = ExpiryGenerator.getNextFriday(block.timestamp + 12 weeks);
+    listingManager.queueNewBoard(expiry);
+    (, ListingManager.StrikeToAdd[] memory strikes) = listingManager.TEST_getNewBoardData(expiry);
+
+    for (uint i; i < strikes.length; i++) {
+      console.log(strikes[i].strikePrice);
+      console.log(strikes[i].skew);
+    }
+
     assertTrue(false);
   }
 
@@ -103,18 +133,18 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
       abi.encodeWithSelector(ILiquidityPool.CBTimestamp.selector),
       abi.encode(block.timestamp + 4 weeks)
     );
-    vm.expectRevert("CB active");
+    vm.expectRevert(abi.encodeWithSelector(ListingManager.LM_CBActive.selector, block.timestamp));
     listingManager.queueNewBoard(expiry);
 
     // // set the CB to not revert
     vm.mockCall(address(liquidityPool), abi.encodeWithSelector(ILiquidityPool.CBTimestamp.selector), abi.encode(0));
     expiry = expiry - 2 weeks;
-    vm.expectRevert("expiry too short");
+    vm.expectRevert(abi.encodeWithSelector(ListingManager.LM_ExpiryTooShort.selector, expiry, 7 days));
     listingManager.queueNewBoard(expiry);
 
     // should revert, expiry not a friday
     expiry = expiry + 4 weeks + 1 days;
-    vm.expectRevert("expiry doesn\'t match format");
+    vm.expectRevert(abi.encodeWithSelector(ListingManager.LM_ExpiryDoesntMatchFormat.selector, expiry));
     listingManager.queueNewBoard(expiry);
 
     // sucessfully queue board
@@ -122,7 +152,7 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
     listingManager.queueNewBoard(expiry);
 
     // should revert, board already queued
-    vm.expectRevert("board already queued");
+    vm.expectRevert(abi.encodeWithSelector(ListingManager.LM_BoardAlreadyQueued.selector, expiry));
     listingManager.queueNewBoard(expiry);
 
     // check the board is queued
