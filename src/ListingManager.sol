@@ -569,9 +569,6 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
 
   event LM_QueuedBoardExecuted(uint expiry, QueuedBoard board,address executor);
 
-  event StrikesAdded(uint boardId, uint[] strikePrices, uint[] skews);
-
-
   ////////////
   // Errors //
   ////////////
