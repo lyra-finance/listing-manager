@@ -16,7 +16,7 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
   function testInterpolateBoardShortExpiry() public {
     // interpolates correctly for short expiry (1d)
     // - 3 strikes (OTM,ATM,ITM)
-    OptionMarketMockSetup.mockBoardWithThreeStrikes(optionMarket, greekCache, 2 weeks);
+    OptionMarketMockSetup.mockBoardWithThreeStrikes(optionMarket, greekCache, ExpiryGenerator.getNextFriday(block.timestamp + 2 weeks));
     // live board's expiry is 2 weeks away
     uint expiry = ExpiryGenerator.getNextFriday(block.timestamp + 1 weeks);
     listingManager.queueNewBoard(expiry);
@@ -33,7 +33,7 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
   function testInterpolateBoardLongExpiry() public {
     // TODO: interpolates correctly for long expiry (12w)
     // - 3 strikes (OTM,ATM,ITM)
-    OptionMarketMockSetup.mockBoardWithThreeStrikes(optionMarket, greekCache, 13 weeks);
+    OptionMarketMockSetup.mockBoardWithThreeStrikes(optionMarket, greekCache, ExpiryGenerator.getNextFriday(block.timestamp + 13 weeks));
     // live board's expiry is 2 week away
     uint expiry = ExpiryGenerator.getNextFriday(block.timestamp + 12 weeks);
     listingManager.queueNewBoard(expiry);
@@ -51,9 +51,11 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
 
   function testInterpolateBoardZeroStrikes() public {
     // TODO: works for 0 strikes
+    vm.warp(1674806400);
     uint expiry = ExpiryGenerator.getNextFriday(block.timestamp + 13 weeks);
-
+    console.log('gets the first expiry for the baord');
     OptionMarketMockSetup.mockBoardWithZeroStrikes(optionMarket, greekCache, expiry);
+    console.log('sets up the board');
     // live board's expiry is 2 week away
     expiry = ExpiryGenerator.getNextFriday(block.timestamp + 12 weeks);
     listingManager.queueNewBoard(expiry);
@@ -79,7 +81,7 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
   function testExtrapolateBoardShortExpiryShorterBoard() public {
     // TODO: extrapolating a 1 day expiry board from a 6 hr expiry board
     // - 3 strikes (OTM,ATM,ITM)
-    OptionMarketMockSetup.mockBoardWithThreeStrikes(optionMarket, greekCache, 1 weeks);
+    OptionMarketMockSetup.mockBoardWithThreeStrikes(optionMarket, greekCache, ExpiryGenerator.getNextFriday(block.timestamp + 1 weeks));
     // live board's expiry is 2 weeks away
     vm.warp(block.timestamp + 1 weeks + 4 days);
     uint expiry = ExpiryGenerator.getNextFriday(block.timestamp);

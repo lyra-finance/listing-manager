@@ -18,6 +18,9 @@ import "./lib/ExpiryGenerator.sol";
 import "./ListingManagerLibrarySettings.sol";
 import "../lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
 
+// TODO: remove before pushing
+import "forge-std/Test.sol";
+
 contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   using DecimalMath for uint;
 
@@ -283,13 +286,16 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
 
   function _validateNewBoardExpiry(uint expiry) internal view {
     if (expiry < block.timestamp + NEW_BOARD_MIN_EXPIRY) {
-      revert LM_ExpiryTooShort(expiry, block.timestamp + NEW_BOARD_MIN_EXPIRY);
+      revert LM_ExpiryTooShort(expiry, NEW_BOARD_MIN_EXPIRY);
     }
 
     uint[] memory validExpiries = getValidExpiries();
-
+    console.log("validExpiries.length: %s", validExpiries.length);
     for (uint i = 0; i < validExpiries.length; ++i) {
+      console.log("expiry: %s", expiry);  
+      console.log("validExpiries[i]: %s", validExpiries[i]);
       if (validExpiries[i] == expiry) {
+        console.log('found expirey');
         // matches a valid expiry. If the expiry already exists, it will be caught in _fetchSurroundingBoards()
         return;
       }

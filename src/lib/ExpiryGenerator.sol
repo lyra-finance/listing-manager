@@ -4,6 +4,9 @@ pragma solidity 0.8.16;
 import "../../lib/openzeppelin-contracts/contracts/utils/Arrays.sol";
 import "../../lib/lyra-utils/src/arrays/UnorderedMemoryArray.sol";
 
+// forge std
+import "forge-std/Test.sol";
+
 /**
  * @title Automated Expiry Generator
  * @author Lyra
@@ -38,6 +41,8 @@ library ExpiryGenerator {
   {
     expiries = new uint[](nWeeklies + nMonthlies);
     uint weeklyExpiry = getNextFriday(timestamp);
+    
+    console.log('weeklyExpiry: %s', weeklyExpiry);
 
     uint insertIndex = 0;
     for (; insertIndex < nWeeklies; ++insertIndex) {
