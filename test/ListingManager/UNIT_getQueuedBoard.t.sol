@@ -46,14 +46,16 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
 
     assertGt(strikes[1].skew, strikes[0].skew, "ITM strike not less than ATM");
     assertLt(strikes[2].skew, strikes[0].skew, "OTM strike not greater than ATM");
-    
+
   }
 
   function testInterpolateBoardZeroStrikes() public {
     // TODO: works for 0 strikes
-     OptionMarketMockSetup.mockBoardWithThreeStrikes(optionMarket, greekCache, 13 weeks);
+    uint expiry = ExpiryGenerator.getNextFriday(block.timestamp + 13 weeks);
+
+    OptionMarketMockSetup.mockBoardWithZeroStrikes(optionMarket, greekCache, expiry);
     // live board's expiry is 2 week away
-    uint expiry = ExpiryGenerator.getNextFriday(block.timestamp + 12 weeks);
+    expiry = ExpiryGenerator.getNextFriday(block.timestamp + 12 weeks);
     listingManager.queueNewBoard(expiry);
     (, ListingManager.StrikeToAdd[] memory strikes) = listingManager.TEST_getNewBoardData(expiry);
 
@@ -62,7 +64,6 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
       console.log(strikes[i].skew);
     }
 
-    assertTrue(false);
   }
 
   function FUZZ_testInterpolateBoard() public {
@@ -78,6 +79,19 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
   function testExtrapolateBoardShortExpiryShorterBoard() public {
     // TODO: extrapolating a 1 day expiry board from a 6 hr expiry board
     // - 3 strikes (OTM,ATM,ITM)
+    OptionMarketMockSetup.mockBoardWithThreeStrikes(optionMarket, greekCache, 1 weeks);
+    // live board's expiry is 2 weeks away
+    vm.warp(block.timestamp + 1 weeks + 4 days);
+    uint expiry = ExpiryGenerator.getNextFriday(block.timestamp);
+    listingManager.queueNewBoard(expiry);
+    (, ListingManager.StrikeToAdd[] memory strikes) = listingManager.TEST_getNewBoardData(expiry);
+    
+    assertEq(strikes.length, 15);
+    assertEq(strikes[0].strikePrice, 1300 ether, "atm strike missing");
+    assertEq(strikes[0].skew, 1 * 1e18, "ATM strike skew not equal to 1");
+
+    assertGt(strikes[1].skew, strikes[0].skew, "ITM strike not less than ATM");
+    assertLt(strikes[2].skew, strikes[0].skew, "OTM strike not greater than ATM");
   }
   function testExtrapolateBoardShortExpiryLongerBoard() public {
     // TODO: extrapolating a 1 day expiry board from a 1 week expiry board

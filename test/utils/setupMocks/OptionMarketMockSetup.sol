@@ -138,7 +138,7 @@ contract OptionMarketMockSetup is Test {
     );
   }
 
-  function mockBoardWithThreeStrikes(IOptionMarket optionMarket, IOptionGreekCache greekCache, uint expiryOffset) public {
+  function mockBoardWithThreeStrikes(IOptionMarket optionMarket, IOptionGreekCache greekCache, uint expiry) public {
     uint[] memory strikeIds = new uint[](3);
     strikeIds[0] = DEFAULT_STRIKE_1.id;
     strikeIds[1] = DEFAULT_STRIKE_2.id;
@@ -167,7 +167,7 @@ contract OptionMarketMockSetup is Test {
       address(optionMarket),
       abi.encodeWithSelector(IOptionMarket.getBoardAndStrikeDetails.selector),
       abi.encode(
-        IOptionMarket.OptionBoard({id: 1, expiry: block.timestamp + expiryOffset, iv: 1 ether, frozen: false, strikeIds: strikeIds}),
+        IOptionMarket.OptionBoard({id: 1, expiry: expiry, iv: 1 ether, frozen: false, strikeIds: strikeIds}),
         boardStrikes,
         strikeToBaseReturnedRatios,
         0,
@@ -214,7 +214,7 @@ contract OptionMarketMockSetup is Test {
       address(optionMarket),
       abi.encodeWithSelector(IOptionMarket.getBoardAndStrikeDetails.selector),
       abi.encode(
-        IOptionMarket.OptionBoard({id: 1, expiry: block.timestamp + expiryOffset, iv: 1 ether, frozen: false, strikeIds: strikeIds}),
+        IOptionMarket.OptionBoard({id: 1, expiry: expiryOffset, iv: 1 ether, frozen: false, strikeIds: strikeIds}),
         boardStrikes,
         strikeToBaseReturnedRatios,
         0,

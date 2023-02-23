@@ -283,7 +283,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
 
   function _validateNewBoardExpiry(uint expiry) internal view {
     if (expiry < block.timestamp + NEW_BOARD_MIN_EXPIRY) {
-      revert LM_ExpiryTooShort(expiry, NEW_BOARD_MIN_EXPIRY);
+      revert LM_ExpiryTooShort(expiry, block.timestamp + NEW_BOARD_MIN_EXPIRY);
     }
 
     uint[] memory validExpiries = getValidExpiries();
