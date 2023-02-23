@@ -42,8 +42,6 @@ library ExpiryGenerator {
     expiries = new uint[](nWeeklies + nMonthlies);
     uint weeklyExpiry = getNextFriday(timestamp);
     
-    console.log('weeklyExpiry: %s', weeklyExpiry);
-
     uint insertIndex = 0;
     for (; insertIndex < nWeeklies; ++insertIndex) {
       expiries[insertIndex] = weeklyExpiry;

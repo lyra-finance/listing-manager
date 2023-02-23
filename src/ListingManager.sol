@@ -18,9 +18,6 @@ import "./lib/ExpiryGenerator.sol";
 import "./ListingManagerLibrarySettings.sol";
 import "../lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
 
-// TODO: remove before pushing
-import "forge-std/Test.sol";
-
 contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   using DecimalMath for uint;
 
@@ -290,12 +287,8 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     }
 
     uint[] memory validExpiries = getValidExpiries();
-    console.log("validExpiries.length: %s", validExpiries.length);
     for (uint i = 0; i < validExpiries.length; ++i) {
-      console.log("expiry: %s", expiry);  
-      console.log("validExpiries[i]: %s", validExpiries[i]);
       if (validExpiries[i] == expiry) {
-        console.log('found expirey');
         // matches a valid expiry. If the expiry already exists, it will be caught in _fetchSurroundingBoards()
         return;
       }
@@ -306,7 +299,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   /// @dev Internal queueBoard function, assumes the expiry is valid (but does not know if the expiry is already used)
   function _queueNewBoard(uint newExpiry) internal {
     (uint baseIv, StrikeToAdd[] memory strikesToAdd) = _getNewBoardData(newExpiry);
-
+    console.log('makes it to setter for queued board');
     queuedBoards[newExpiry].queuedTime = block.timestamp;
     queuedBoards[newExpiry].expiry = newExpiry;
     queuedBoards[newExpiry].baseIv = baseIv;
@@ -328,10 +321,12 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     );
 
     BoardDetails[] memory boardDetails = getAllBoardDetails();
+    console.log('gets all the board details');
 
     (VolGenerator.Board memory shortDated, VolGenerator.Board memory longDated) =
       _fetchSurroundingBoards(boardDetails, expiry);
-
+    
+    console.log("&*&&&&&&&&&&&&&&&&&&&&&&&&&&");
     if (shortDated.orderedSkews.length == 0) {
       return _extrapolateBoard(spotPrice, expiry, newStrikes, numNewStrikes, longDated);
     } else if (longDated.orderedSkews.length == 0) {
@@ -372,6 +367,8 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
       }
     }
 
+    console.log('makes it to through the for loop');
+
     // At this point, one of short/long is guaranteed to be set - as the boardDetails length is > 0
     // and the expiry being used already causes reverts
     if (longIndex != type(uint).max) {
@@ -381,7 +378,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     if (shortIndex != type(uint).max) {
       shortDated = _toVolGeneratorBoard(boardDetails[shortIndex]);
     }
-
+    console.log("makes to the end of the function");
     return (shortDated, longDated);
   }
 
@@ -477,11 +474,15 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
       optionMarket.getBoardAndStrikeDetails(boardId);
 
     IOptionGreekCache.BoardGreeksView memory boardGreeks = optionGreekCache.getBoardGreeksView(boardId);
+    console.log('boardGreeks', boardGreeks.ivGWAV);
+    console.log('boardGreeks', boardGreeks.skewGWAVs.length);
+    // console.log('boardGreeks', boardGreeks.netGreeks.netDelta);
 
     StrikeDetails[] memory strikeDetails = new StrikeDetails[](strikes.length);
     for (uint i = 0; i < strikes.length; ++i) {
       strikeDetails[i] = StrikeDetails({strikePrice: strikes[i].strikePrice, skew: boardGreeks.skewGWAVs[i]});
     }
+    console.log('returns the details with the strikes');
     return BoardDetails({expiry: board.expiry, baseIv: boardGreeks.ivGWAV, strikes: strikeDetails});
   }
 

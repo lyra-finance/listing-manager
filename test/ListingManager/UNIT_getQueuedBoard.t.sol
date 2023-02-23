@@ -49,23 +49,16 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
 
   }
 
-  function testInterpolateBoardZeroStrikes() public {
+  // This will throw if when a board with zero strikes is meant to be extrapolated form
+  function testRevertInterpolateBoardZeroStrikes() public {
     // TODO: works for 0 strikes
     vm.warp(1674806400);
     uint expiry = ExpiryGenerator.getNextFriday(block.timestamp + 13 weeks);
-    console.log('gets the first expiry for the baord');
     OptionMarketMockSetup.mockBoardWithZeroStrikes(optionMarket, greekCache, expiry);
-    console.log('sets up the board');
     // live board's expiry is 2 week away
     expiry = ExpiryGenerator.getNextFriday(block.timestamp + 12 weeks);
+    vm.expectRevert();
     listingManager.queueNewBoard(expiry);
-    (, ListingManager.StrikeToAdd[] memory strikes) = listingManager.TEST_getNewBoardData(expiry);
-
-    for(uint i; i < strikes.length; i++) {
-      console.log(strikes[i].strikePrice);
-      console.log(strikes[i].skew);
-    }
-
   }
 
   function FUZZ_testInterpolateBoard() public {
