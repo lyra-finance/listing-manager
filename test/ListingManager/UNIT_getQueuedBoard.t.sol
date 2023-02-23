@@ -39,11 +39,14 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
     listingManager.queueNewBoard(expiry);
     (, ListingManager.StrikeToAdd[] memory strikes) = listingManager.TEST_getNewBoardData(expiry);
 
-    for(uint i; i < strikes.length; i++) {
-      console.log(strikes[i].strikePrice);
-      console.log(strikes[i].skew);
-    }
-    assertTrue(false);
+    assertEq(strikes.length, 12);
+
+    assertEq(strikes[0].strikePrice, 1300 ether, "atm strike missing");
+    assertEq(strikes[0].skew, 1 * 1e18, "ATM strike skew not equal to 1");
+
+    assertGt(strikes[1].skew, strikes[0].skew, "ITM strike not less than ATM");
+    assertLt(strikes[2].skew, strikes[0].skew, "OTM strike not greater than ATM");
+    
   }
 
   function testInterpolateBoardZeroStrikes() public {
