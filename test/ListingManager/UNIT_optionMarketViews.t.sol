@@ -13,8 +13,6 @@ contract ListingManager_OptionMarketViews_Test is ListingManagerTestBase {
   // TODO: exhaustive test writeup
   function testGetBoardDetails() public {
     ListingManager.BoardDetails memory boardDetails = listingManager.getBoardDetails(1);
-    console.log("expiry", boardDetails.expiry);
-    console.log("baseIv", boardDetails.baseIv);
   }
 
   ////////////////////////

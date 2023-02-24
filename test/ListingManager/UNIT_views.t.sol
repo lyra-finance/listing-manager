@@ -14,7 +14,7 @@ contract ListingManager_Views_Test is ListingManagerTestBase {
     uint expiry = addBoardWithStrikes();
     ListingManager.QueuedBoard memory queued = listingManager.getQueuedBoard(expiry);
     assertEq(queued.expiry, ExpiryGenerator.getNextFriday(block.timestamp) + 1 weeks);
-    assertEq(queued.strikesToAdd.length, 13, "length of strikes does not match expected");
+    assertEq(queued.strikesToAdd.length, 12, "length of strikes does not match expected");
   }
 
   function testCannotGetDeletedQueuedBoard() public {

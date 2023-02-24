@@ -73,7 +73,6 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   uint public strikeQueueTime = 1 days;
   /// @notice How long a queued item can exist after queueTime before being considered stale and removed
   uint public queueStaleTime = 1 days;
-  uint public maxStrikesPerExecute = 5;
 
   // boardId => strikes
   mapping(uint => QueuedStrikes) queuedStrikes;
@@ -195,6 +194,10 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     }
 
     QueuedBoard memory queuedBoard = queuedBoards[expiry];
+    if (queuedBoard.expiry == 0) {
+      revert LM_BoardNotQueued(expiry);
+    }
+
     // if it is stale (staleQueueTime), delete the entry
     if (queuedBoard.queuedTime + boardQueueTime + queueStaleTime < block.timestamp) {
       emit LM_QueuedBoardStale(
@@ -269,8 +272,12 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
       PIVOTS
     );
 
+    if (numNewStrikes == 0) {
+      revert LM_NoNewStrikesGenerated(boardId);
+    }
+
     queuedStrikes[boardId].queuedTime = block.timestamp;
-    queuedStrikes[boardId].boardId = boardId; // todo: is boardId even necessary?
+    queuedStrikes[boardId].boardId = boardId;
 
     for (uint i = 0; i < numNewStrikes; i++) {
       queuedStrikes[boardId].strikesToAdd.push(
@@ -303,7 +310,6 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     }
 
     uint[] memory validExpiries = getValidExpiries();
-
     for (uint i = 0; i < validExpiries.length; ++i) {
       if (validExpiries[i] == expiry) {
         // matches a valid expiry. If the expiry already exists, it will be caught in _fetchSurroundingBoards()
@@ -316,7 +322,6 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   /// @dev Internal queueBoard function, assumes the expiry is valid (but does not know if the expiry is already used)
   function _queueNewBoard(uint newExpiry) internal {
     (uint baseIv, StrikeToAdd[] memory strikesToAdd) = _getNewBoardData(newExpiry);
-
     queuedBoards[newExpiry].queuedTime = block.timestamp;
     queuedBoards[newExpiry].expiry = newExpiry;
     queuedBoards[newExpiry].baseIv = baseIv;
@@ -391,7 +396,6 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     if (shortIndex != type(uint).max) {
       shortDated = _toVolGeneratorBoard(boardDetails[shortIndex]);
     }
-
     return (shortDated, longDated);
   }
 
@@ -406,8 +410,8 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   ) internal view returns (uint baseIv, StrikeToAdd[] memory strikesToAdd) {
     uint tteAnnualised = _secToAnnualized(expiry - block.timestamp);
 
-    // Note: we treat the default ATM skew as 1.0
-    // We pass in 1.0 as the baseIv... because.... TODO: why exactly?
+    // Note: we treat the default ATM skew as 1.0, by passing in baseIv as 1, we can determine what the "skew" should be
+    // if baseIv is 1. Then we flip the equation to get the baseIv for a skew of 1.0.
     baseIv = VolGenerator.getSkewForNewBoard(spotPrice, tteAnnualised, DecimalMath.UNIT, shortDated, longDated);
 
     strikesToAdd = new StrikeToAdd[](numNewStrikes);
@@ -428,8 +432,8 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   ) internal view returns (uint baseIv, StrikeToAdd[] memory strikesToAdd) {
     uint tteAnnualised = _secToAnnualized(expiry - block.timestamp);
 
-    // Note: we treat the default ATM skew as 1.0
-    // We pass in 1.0 as the baseIv... because.... TODO: why exactly?
+    // Note: we treat the default ATM skew as 1.0, by passing in baseIv as 1, we can determine what the "skew" should be
+    // if baseIv is 1. Then we flip the equation to get the baseIv for a skew of 1.0.
     baseIv = VolGenerator.getSkewForNewBoard(spotPrice, tteAnnualised, DecimalMath.UNIT, spotPrice, edgeBoard);
 
     strikesToAdd = new StrikeToAdd[](numNewStrikes);
@@ -522,13 +526,11 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   // Misc //
   //////////
 
-  /// TODO: can be moved to library functions
   function _secToAnnualized(uint sec) public pure returns (uint) {
     return (sec * DecimalMath.UNIT) / uint(365 days);
   }
 
   function _quickSortStrikes(StrikeDetails[] memory arr, int left, int right) internal pure {
-    // TODO: untested, just copy pasted
     int i = left;
     int j = right;
     if (i == j) {
@@ -589,14 +591,30 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   ////////////
 
   error LM_ExpiryExists(uint expiry);
+
+  error LM_BoardNotQueued(uint expiry);
+
   error LM_OnlyRiskCouncil(address sender);
+
   error LM_TooEarlyToExecuteStrike(uint boardId, uint queuedTime, uint blockTime);
+
+  error LM_BoardStale(uint expiry, uint staleTime, uint blockTime);
+
   error LM_TooEarlyToExecuteBoard(uint expiry, uint queuedTime, uint blockTime);
+
   error LM_CBActive(uint blockTime);
+
   error LM_TooCloseToExpiry(uint expiry, uint boardId);
+
   error LM_BoardAlreadyQueued(uint expiry);
+
   error LM_ExpiryDoesntMatchFormat(uint expiry);
+
   error LM_ExpiryTooShort(uint expiry, uint minExpiry);
+
   error LM_NoBoards();
+
+  error LM_NoNewStrikesGenerated(uint boardId);
+
   error LM_strikesAlreadyQueued(uint boardId);
 }
