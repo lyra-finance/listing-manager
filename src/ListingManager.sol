@@ -73,7 +73,6 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   uint public strikeQueueTime = 1 days;
   /// @notice How long a queued item can exist after queueTime before being considered stale and removed
   uint public queueStaleTime = 1 days;
-  uint public maxStrikesPerExecute = 5;
 
   // boardId => strikes
   mapping(uint => QueuedStrikes) queuedStrikes;
@@ -195,9 +194,12 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     }
 
     QueuedBoard memory queuedBoard = queuedBoards[expiry];
+    if (queuedBoard.expiry == 0) {
+      revert LM_BoardNotQueued(expiry);
+    }
+
     // if it is stale (staleQueueTime), delete the entry
-    revert LM_BoardStale(expiry, queueStaleTime, block.timestamp);
-    if (queuedBoard.queuedTime + boardQueueTime + queueStaleTime > block.timestamp) {
+    if (queuedBoard.queuedTime + boardQueueTime + queueStaleTime < block.timestamp) {
       emit LM_QueuedBoardStale(
         msg.sender, expiry, queuedBoard.queuedTime + boardQueueTime + queueStaleTime, block.timestamp
         );
@@ -589,6 +591,8 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   ////////////
 
   error LM_ExpiryExists(uint expiry);
+
+  error LM_BoardNotQueued(uint expiry);
 
   error LM_OnlyRiskCouncil(address sender);
 
