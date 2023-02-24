@@ -253,8 +253,12 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
       PIVOTS
     );
 
+    if (numNewStrikes == 0) {
+      revert LM_NoNewStrikesGenerated(boardId);
+    }
+
     queuedStrikes[boardId].queuedTime = block.timestamp;
-    queuedStrikes[boardId].boardId = boardId; // todo: is boardId even necessary?
+    queuedStrikes[boardId].boardId = boardId;
 
     for (uint i = 0; i < numNewStrikes; i++) {
       queuedStrikes[boardId].strikesToAdd.push(
@@ -299,7 +303,6 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   /// @dev Internal queueBoard function, assumes the expiry is valid (but does not know if the expiry is already used)
   function _queueNewBoard(uint newExpiry) internal {
     (uint baseIv, StrikeToAdd[] memory strikesToAdd) = _getNewBoardData(newExpiry);
-    console.log('makes it to setter for queued board');
     queuedBoards[newExpiry].queuedTime = block.timestamp;
     queuedBoards[newExpiry].expiry = newExpiry;
     queuedBoards[newExpiry].baseIv = baseIv;
@@ -321,12 +324,10 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     );
 
     BoardDetails[] memory boardDetails = getAllBoardDetails();
-    console.log('gets all the board details');
 
     (VolGenerator.Board memory shortDated, VolGenerator.Board memory longDated) =
       _fetchSurroundingBoards(boardDetails, expiry);
-    
-    console.log("&*&&&&&&&&&&&&&&&&&&&&&&&&&&");
+
     if (shortDated.orderedSkews.length == 0) {
       return _extrapolateBoard(spotPrice, expiry, newStrikes, numNewStrikes, longDated);
     } else if (longDated.orderedSkews.length == 0) {
@@ -367,8 +368,6 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
       }
     }
 
-    console.log('makes it to through the for loop');
-
     // At this point, one of short/long is guaranteed to be set - as the boardDetails length is > 0
     // and the expiry being used already causes reverts
     if (longIndex != type(uint).max) {
@@ -378,7 +377,6 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     if (shortIndex != type(uint).max) {
       shortDated = _toVolGeneratorBoard(boardDetails[shortIndex]);
     }
-    console.log("makes to the end of the function");
     return (shortDated, longDated);
   }
 
@@ -393,8 +391,8 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   ) internal view returns (uint baseIv, StrikeToAdd[] memory strikesToAdd) {
     uint tteAnnualised = _secToAnnualized(expiry - block.timestamp);
 
-    // Note: we treat the default ATM skew as 1.0
-    // We pass in 1.0 as the baseIv... because.... TODO: why exactly?
+    // Note: we treat the default ATM skew as 1.0, by passing in baseIv as 1, we can determine what the "skew" should be
+    // if baseIv is 1. Then we flip the equation to get the baseIv for a skew of 1.0.
     baseIv = VolGenerator.getSkewForNewBoard(spotPrice, tteAnnualised, DecimalMath.UNIT, shortDated, longDated);
 
     strikesToAdd = new StrikeToAdd[](numNewStrikes);
@@ -416,8 +414,8 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     uint spotPrice = _getSpotPrice();
     uint tteAnnualised = _secToAnnualized(expiry - block.timestamp);
 
-    // Note: we treat the default ATM skew as 1.0
-    // We pass in 1.0 as the baseIv... because.... TODO: why exactly?
+    // Note: we treat the default ATM skew as 1.0, by passing in baseIv as 1, we can determine what the "skew" should be
+    // if baseIv is 1. Then we flip the equation to get the baseIv for a skew of 1.0.
     baseIv = VolGenerator.getSkewForNewBoard(spotPrice, tteAnnualised, DecimalMath.UNIT, spotPrice, edgeBoard);
 
     strikesToAdd = new StrikeToAdd[](numNewStrikes);
@@ -448,7 +446,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     }
 
     return VolGenerator.Board({
-      // This will revert for expired boards TODO: add a test for this
+      // Note: This will revert for expired boards
       tAnnualized: _secToAnnualized(details.expiry - block.timestamp),
       baseIv: details.baseIv,
       orderedStrikePrices: orderedStrikePrices,
@@ -474,15 +472,11 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
       optionMarket.getBoardAndStrikeDetails(boardId);
 
     IOptionGreekCache.BoardGreeksView memory boardGreeks = optionGreekCache.getBoardGreeksView(boardId);
-    console.log('boardGreeks', boardGreeks.ivGWAV);
-    console.log('boardGreeks', boardGreeks.skewGWAVs.length);
-    // console.log('boardGreeks', boardGreeks.netGreeks.netDelta);
 
     StrikeDetails[] memory strikeDetails = new StrikeDetails[](strikes.length);
     for (uint i = 0; i < strikes.length; ++i) {
       strikeDetails[i] = StrikeDetails({strikePrice: strikes[i].strikePrice, skew: boardGreeks.skewGWAVs[i]});
     }
-    console.log('returns the details with the strikes');
     return BoardDetails({expiry: board.expiry, baseIv: boardGreeks.ivGWAV, strikes: strikeDetails});
   }
 
@@ -499,12 +493,10 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   ///////////
 
   function getQueuedBoard(uint expiry) external returns (QueuedBoard memory) {
-    // TODO: probably broken because of the array
     return queuedBoards[expiry];
   }
 
   function getQueuedStrikes(uint boardId) external returns (QueuedStrikes memory) {
-    // TODO: probably broken because of the array
     return queuedStrikes[boardId];
   }
 
@@ -516,13 +508,11 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   // Misc //
   //////////
 
-  /// TODO: can be moved to library functions
   function _secToAnnualized(uint sec) public pure returns (uint) {
     return (sec * DecimalMath.UNIT) / uint(365 days);
   }
 
   function _quickSortStrikes(StrikeDetails[] memory arr, int left, int right) internal pure {
-    // TODO: untested, just copy pasted
     int i = left;
     int j = right;
     if (i == j) {
@@ -574,7 +564,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
 
   event LM_QueuedStrikeExecuted(uint boardId, QueuedStrikes strikes, address executor);
 
-  event LM_QueuedBoardExecuted(uint expiry, QueuedBoard board,address executor);
+  event LM_QueuedBoardExecuted(uint expiry, QueuedBoard board, address executor);
 
   ////////////
   // Errors //
@@ -602,5 +592,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
 
   error LM_NoBoards();
 
+  error LM_NoNewStrikesGenerated(uint boardId);
+
   error LM_strikesAlreadyQueued(uint boardId);
-} 
+}

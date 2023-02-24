@@ -29,7 +29,11 @@ contract ListingManager_OptionMarketViews_Test is ListingManagerTestBase {
   ////////////////
 
   function testCBIsActive() public {
-    vm.mockCall(address(liquidityPool), abi.encodeWithSelector(ILiquidityPool.CBTimestamp.selector), abi.encode(block.timestamp + 4 weeks));
+    vm.mockCall(
+      address(liquidityPool),
+      abi.encodeWithSelector(ILiquidityPool.CBTimestamp.selector),
+      abi.encode(block.timestamp + 4 weeks)
+    );
     assertEq(listingManager.TEST_isCBActive(), true);
   }
 

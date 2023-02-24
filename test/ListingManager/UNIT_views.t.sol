@@ -14,14 +14,14 @@ contract ListingManager_Views_Test is ListingManagerTestBase {
     uint expiry = addBoardWithStrikes();
     ListingManager.QueuedBoard memory queued = listingManager.getQueuedBoard(expiry);
     assertEq(queued.expiry, ExpiryGenerator.getNextFriday(block.timestamp) + 1 weeks);
-    assertEq(queued.strikesToAdd.length, 12, "length of strikes does not match expected");    
+    assertEq(queued.strikesToAdd.length, 12, "length of strikes does not match expected");
   }
 
   function testCannotGetDeletedQueuedBoard() public {
     uint expiry = addBoardWithStrikes();
     ListingManager.QueuedBoard memory queued = listingManager.getQueuedBoard(expiry);
     assertEq(queued.expiry, ExpiryGenerator.getNextFriday(block.timestamp) + 1 weeks);
-    assertEq(queued.strikesToAdd.length, 12, "length of strikes does not match expected");  
+    assertEq(queued.strikesToAdd.length, 12, "length of strikes does not match expected");
 
     // veto Board
     vm.prank(riskCouncil);
@@ -29,8 +29,8 @@ contract ListingManager_Views_Test is ListingManagerTestBase {
     ListingManager.QueuedBoard memory dequeued = listingManager.getQueuedBoard(expiry);
 
     assertEq(dequeued.expiry, 0);
-    assertEq(dequeued.strikesToAdd.length, 0, "length of strikes does not match expected"); 
-    assertEq(dequeued.baseIv, 0); 
+    assertEq(dequeued.strikesToAdd.length, 0, "length of strikes does not match expected");
+    assertEq(dequeued.baseIv, 0);
   }
 
   ////////////////////////
@@ -40,22 +40,22 @@ contract ListingManager_Views_Test is ListingManagerTestBase {
   function testGetQueuedStrikes() public {
     // get the live board from mock option market contract
     uint[] memory liveBoards = optionMarket.getLiveBoards();
-    
+
     ListingManager.QueuedStrikes memory queuedStrikes = listingManager.getQueuedStrikes(liveBoards[0]);
 
     assertEq(queuedStrikes.strikesToAdd.length, 0, "strikes already queued");
-    
+
     // added strikes to live board
     listingManager.findAndQueueStrikesForBoard(liveBoards[0]);
     ListingManager.QueuedStrikes memory curQueuedStrikes = listingManager.getQueuedStrikes(liveBoards[0]);
-    
+
     assertGt(curQueuedStrikes.strikesToAdd.length, queuedStrikes.strikesToAdd.length, "strikes not queued");
   }
 
   function testGetDeletedQueuedStrikes() public {
     // get the live board from mock option market contract
     uint[] memory liveBoards = optionMarket.getLiveBoards();
-    
+
     ListingManager.QueuedStrikes memory queuedStrikes = listingManager.getQueuedStrikes(liveBoards[0]);
 
     assertEq(queuedStrikes.strikesToAdd.length, 0, "strikes already queued");
@@ -63,7 +63,7 @@ contract ListingManager_Views_Test is ListingManagerTestBase {
     // added strikes to live board
     listingManager.findAndQueueStrikesForBoard(liveBoards[0]);
     ListingManager.QueuedStrikes memory curQueuedStrikes = listingManager.getQueuedStrikes(liveBoards[0]);
-    
+
     assertGt(curQueuedStrikes.strikesToAdd.length, queuedStrikes.strikesToAdd.length, "strikes not queued");
     assertEq(curQueuedStrikes.boardId, liveBoards[0], "board id not set");
     assertGt(curQueuedStrikes.queuedTime, 0, "queued time not set");
@@ -78,7 +78,7 @@ contract ListingManager_Views_Test is ListingManagerTestBase {
   }
 
   // helpers
-  function addBoardWithStrikes() internal returns(uint expiry) {
+  function addBoardWithStrikes() internal returns (uint expiry) {
     expiry = ExpiryGenerator.getNextFriday(block.timestamp) + 1 weeks;
     listingManager.queueNewBoard(expiry);
   }
