@@ -78,8 +78,8 @@ library ExpiryGenerator {
    * @param timestamp The current timestamp
    * @return Timestamp the timestamp of the closest friday to the current timestamp,
    */
-  function getNextFriday(uint timestamp) internal view returns (uint) {
-    // by adding the offset you make the friday 8am the reference point - so when you mod, you'll round to the nearest friday
+  function getNextFriday(uint timestamp) internal pure returns (uint) {
+    // by subtracting the offset you make the friday 8am the reference point - so when you mod, you'll round to the nearest friday
     return timestamp - ((timestamp - MOD_OFFSET) % 7 days) + 7 days;
   }
 }

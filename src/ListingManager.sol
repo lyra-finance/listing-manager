@@ -73,6 +73,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   uint public strikeQueueTime = 1 days;
   /// @notice How long a queued item can exist after queueTime before being considered stale and removed
   uint public queueStaleTime = 1 days;
+  uint public maxStrikesPerExecute = 5;
 
   // boardId => strikes
   mapping(uint => QueuedStrikes) queuedStrikes;
@@ -99,14 +100,14 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   ///////////
   function setRiskCouncil(address _riskCouncil) external onlyOwner {
     riskCouncil = _riskCouncil;
-    emit LM_RiskCouncilSet(_riskCouncil, msg.sender);
+    emit LM_RiskCouncilSet(_riskCouncil);
   }
 
   function setQueueParams(uint _boardQueueTime, uint _strikeQueueTime, uint _queueStaleTime) external onlyOwner {
     boardQueueTime = _boardQueueTime;
     strikeQueueTime = _strikeQueueTime;
     queueStaleTime = _queueStaleTime;
-    emit LM_QueueParamsSet(_boardQueueTime, _strikeQueueTime, _queueStaleTime, msg.sender);
+    emit LM_QueueParamsSet(_boardQueueTime, _strikeQueueTime, _queueStaleTime);
   }
 
   /////////////////////
@@ -115,19 +116,19 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
 
   /// @notice Forcefully remove the QueuedStrikes for given boardId
   function vetoStrikeUpdate(uint boardId) external onlyRiskCouncil {
-    emit LM_StrikeUpdateVetoed(boardId, queuedStrikes[boardId], msg.sender);
+    emit LM_StrikeUpdateVetoed(boardId, queuedStrikes[boardId]);
     delete queuedStrikes[boardId];
   }
 
   /// @notice Forcefully remove the QueuedBoard for given expiry
   function vetoQueuedBoard(uint expiry) external onlyRiskCouncil {
-    emit LM_BoardVetoed(expiry, queuedBoards[expiry], msg.sender);
+    emit LM_BoardVetoed(expiry, queuedBoards[expiry]);
     delete queuedBoards[expiry];
   }
 
   /// @notice Bypass the delay for adding strikes to a board, execute immediately
-  function fastForwardStrikeUpdate(uint boardId) external onlyRiskCouncil {
-    _executeQueuedStrikes(boardId);
+  function fastForwardStrikeUpdate(uint boardId, uint executionLimit) external onlyRiskCouncil {
+    _executeQueuedStrikes(boardId, executionLimit);
   }
 
   /// @notice Bypass the delay for adding a new board, execute immediately
@@ -139,13 +140,18 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   // Execute queued strikes //
   ////////////////////////////
 
-  function executeQueuedStrikes(uint boardId) public {
+  function executeQueuedStrikes(uint boardId, uint executionLimit) public {
     if (isCBActive()) {
+      emit LM_CBClearQueuedStrikes(msg.sender, boardId);
       delete queuedStrikes[boardId];
       return;
     }
 
-    if (queuedStrikes[boardId].queuedTime + queueStaleTime + strikeQueueTime > block.timestamp) {
+    if (queuedStrikes[boardId].queuedTime + queueStaleTime + strikeQueueTime < block.timestamp) {
+      emit LM_QueuedStrikesStale(
+        msg.sender, boardId, queuedStrikes[boardId].queuedTime + queueStaleTime + strikeQueueTime, block.timestamp
+        );
+
       delete queuedStrikes[boardId];
       return;
     }
@@ -153,23 +159,28 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     if (queuedStrikes[boardId].queuedTime + strikeQueueTime > block.timestamp) {
       revert LM_TooEarlyToExecuteStrike(boardId, queuedStrikes[boardId].queuedTime, block.timestamp);
     }
-    _executeQueuedStrikes(boardId);
+    _executeQueuedStrikes(boardId, executionLimit);
   }
 
-  function _executeQueuedStrikes(uint boardId) internal {
-    QueuedStrikes memory queueStrikes = queuedStrikes[boardId];
+  function _executeQueuedStrikes(uint boardId, uint executionLimit) internal {
+    uint strikesLength = queuedStrikes[boardId].strikesToAdd.length;
+    uint numToExecute = strikesLength > executionLimit ? executionLimit : strikesLength;
 
-    for (uint i = 0; i < queuedStrikes[boardId].strikesToAdd.length; i++) {
+    for (uint i = strikesLength; i > strikesLength - numToExecute; --i) {
       governanceWrapper.addStrikeToBoard(
         optionMarket,
         boardId,
-        queuedStrikes[boardId].strikesToAdd[i].strikePrice,
-        queuedStrikes[boardId].strikesToAdd[i].skew
+        queuedStrikes[boardId].strikesToAdd[i - 1].strikePrice,
+        queuedStrikes[boardId].strikesToAdd[i - 1].skew
       );
+      emit LM_QueuedStrikeExecuted(msg.sender, boardId, queuedStrikes[boardId].strikesToAdd[i - 1]);
+      queuedStrikes[boardId].strikesToAdd.pop();
     }
 
-    emit LM_QueuedStrikeExecuted(boardId, queueStrikes, msg.sender);
-    delete queuedStrikes[boardId];
+    if (queuedStrikes[boardId].strikesToAdd.length == 0) {
+      emit LM_QueuedStrikesAllExecuted(msg.sender, boardId);
+      delete queuedStrikes[boardId];
+    }
   }
 
   //////////////////////////
@@ -178,14 +189,20 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
 
   function executeQueuedBoard(uint expiry) public {
     if (isCBActive()) {
+      emit LM_CBClearQueuedBoard(msg.sender, expiry);
       delete queuedBoards[expiry];
       return;
     }
 
     QueuedBoard memory queuedBoard = queuedBoards[expiry];
     // if it is stale (staleQueueTime), delete the entry
+    revert LM_BoardStale(expiry, queueStaleTime, block.timestamp);
     if (queuedBoard.queuedTime + boardQueueTime + queueStaleTime > block.timestamp) {
-      revert LM_BoardStale(expiry, queueStaleTime, block.timestamp);
+      emit LM_QueuedBoardStale(
+        msg.sender, expiry, queuedBoard.queuedTime + boardQueueTime + queueStaleTime, block.timestamp
+        );
+      delete queuedBoards[expiry];
+      return;
     }
 
     // execute the queued board if the required time has passed
@@ -209,7 +226,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     uint boardId =
       governanceWrapper.createOptionBoard(optionMarket, queuedBoard.expiry, queuedBoard.baseIv, strikes, skews, false);
 
-    emit LM_QueuedBoardExecuted(boardId, queuedBoard, msg.sender);
+    emit LM_QueuedBoardExecuted(msg.sender, boardId, queuedBoard);
     delete queuedBoards[expiry];
   }
 
@@ -411,7 +428,6 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     uint numNewStrikes,
     VolGenerator.Board memory edgeBoard
   ) internal view returns (uint baseIv, StrikeToAdd[] memory strikesToAdd) {
-    uint spotPrice = _getSpotPrice();
     uint tteAnnualised = _secToAnnualized(expiry - block.timestamp);
 
     // Note: we treat the default ATM skew as 1.0, by passing in baseIv as 1, we can determine what the "skew" should be
@@ -446,7 +462,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     }
 
     return VolGenerator.Board({
-      // Note: This will revert for expired boards
+      // This will revert for expired boards
       tAnnualized: _secToAnnualized(details.expiry - block.timestamp),
       baseIv: details.baseIv,
       orderedStrikePrices: orderedStrikePrices,
@@ -484,7 +500,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     return exchangeAdapter.getSpotPriceForMarket(address(optionMarket), IBaseExchangeAdapter.PriceType.REFERENCE);
   }
 
-  function isCBActive() internal returns (bool) {
+  function isCBActive() internal view returns (bool) {
     return liquidityPool.CBTimestamp() > block.timestamp;
   }
 
@@ -492,11 +508,11 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   // Views //
   ///////////
 
-  function getQueuedBoard(uint expiry) external returns (QueuedBoard memory) {
+  function getQueuedBoard(uint expiry) external view returns (QueuedBoard memory) {
     return queuedBoards[expiry];
   }
 
-  function getQueuedStrikes(uint boardId) external returns (QueuedStrikes memory) {
+  function getQueuedStrikes(uint boardId) external view returns (QueuedStrikes memory) {
     return queuedStrikes[boardId];
   }
 
@@ -554,17 +570,19 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   // Events ///
   /////////////
 
-  event LM_RiskCouncilSet(address riskCouncil, address owner);
+  event LM_RiskCouncilSet(address indexed riskCouncil);
+  event LM_QueueParamsSet(uint boardQueuedTime, uint strikesQueuedTime, uint staleTime);
+  event LM_StrikeUpdateVetoed(uint indexed boardId, QueuedStrikes exectuedStrike);
+  event LM_BoardVetoed(uint indexed expiry, QueuedBoard queuedBoards);
+  event LM_QueuedStrikeExecuted(address indexed caller, uint indexed boardId, StrikeToAdd strikeAdded);
+  event LM_QueuedStrikesAllExecuted(address indexed caller, uint indexed boardId);
+  event LM_QueuedBoardExecuted(address indexed caller, uint indexed expiry, QueuedBoard board);
 
-  event LM_QueueParamsSet(uint boardQueuedTime, uint strikesQueuedTime, uint staleTime, address executor);
+  event LM_QueuedStrikesStale(address indexed caller, uint indexed boardId, uint staleTimestamp, uint blockTime);
+  event LM_CBClearQueuedStrikes(address indexed caller, uint indexed boardId);
 
-  event LM_StrikeUpdateVetoed(uint boardId, QueuedStrikes exectuedStrike, address executor);
-
-  event LM_BoardVetoed(uint expiry, QueuedBoard queuedBoards, address executor);
-
-  event LM_QueuedStrikeExecuted(uint boardId, QueuedStrikes strikes, address executor);
-
-  event LM_QueuedBoardExecuted(uint expiry, QueuedBoard board, address executor);
+  event LM_QueuedBoardStale(address indexed caller, uint indexed expiry, uint staleTimestamp, uint blockTime);
+  event LM_CBClearQueuedBoard(address indexed caller, uint indexed expiry);
 
   ////////////
   // Errors //

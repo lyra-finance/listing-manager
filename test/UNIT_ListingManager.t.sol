@@ -27,6 +27,6 @@ contract ListingManagerTest is ListingManagerTestBase {
     listingManager.queueNewBoard(expiry);
     (, ListingManager.StrikeToAdd[] memory strikes) = listingManager.TEST_getNewBoardData(expiry);
 
-    assertEq(strikes.length, 15); // why 11?
+    assertEq(strikes.length, 15);
   }
 }
