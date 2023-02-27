@@ -167,10 +167,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
 
     for (uint i = strikesLength; i > strikesLength - numToExecute; --i) {
       governanceWrapper.addStrikeToBoard(
-        optionMarket,
-        boardId,
-        queuedStrikes[boardId].strikesToAdd[i - 1].strikePrice,
-        queuedStrikes[boardId].strikesToAdd[i - 1].skew
+        boardId, queuedStrikes[boardId].strikesToAdd[i - 1].strikePrice, queuedStrikes[boardId].strikesToAdd[i - 1].skew
       );
       emit LM_QueuedStrikeExecuted(msg.sender, boardId, queuedStrikes[boardId].strikesToAdd[i - 1]);
       queuedStrikes[boardId].strikesToAdd.pop();
@@ -225,8 +222,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
       skews[i] = queuedBoard.strikesToAdd[i].skew;
     }
 
-    uint boardId =
-      governanceWrapper.createOptionBoard(optionMarket, queuedBoard.expiry, queuedBoard.baseIv, strikes, skews, false);
+    uint boardId = governanceWrapper.createOptionBoard(queuedBoard.expiry, queuedBoard.baseIv, strikes, skews, false);
 
     emit LM_QueuedBoardExecuted(msg.sender, boardId, queuedBoard);
     delete queuedBoards[expiry];

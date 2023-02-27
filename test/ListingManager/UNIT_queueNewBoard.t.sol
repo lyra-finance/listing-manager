@@ -77,6 +77,7 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
   function testExtrapolateBoardShortExpiryShorterBoard() public {
     // TODO: extrapolating a 1 day expiry board from a 6 hr expiry board
     // - 3 strikes (OTM,ATM,ITM)
+    vm.warp(1674806400);
     OptionMarketMockSetup.mockBoardWithThreeStrikes(
       optionMarket, greekCache, ExpiryGenerator.getNextFriday(block.timestamp + 1 weeks)
     );

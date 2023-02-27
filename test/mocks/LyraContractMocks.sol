@@ -52,16 +52,12 @@ contract MockLiquidityPool is ILiquidityPool {
 }
 
 contract MockOptionMarketGovernanceWrapper is IOptionMarketGovernanceWrapper {
-  function addStrikeToBoard(IOptionMarket market, uint boardId, uint strikePrice, uint skew) external {}
+  function addStrikeToBoard(uint boardId, uint strikePrice, uint skew) external {}
 
-  function createOptionBoard(
-    IOptionMarket market,
-    uint expiry,
-    uint baseIV,
-    uint[] memory strikePrices,
-    uint[] memory skews,
-    bool frozen
-  ) external returns (uint boardId) {
+  function createOptionBoard(uint expiry, uint baseIV, uint[] memory strikePrices, uint[] memory skews, bool frozen)
+    external
+    returns (uint boardId)
+  {
     return boardId;
   }
 }
