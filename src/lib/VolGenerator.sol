@@ -6,7 +6,6 @@ import "../../lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
 import "../../lib/lyra-utils/src/decimals/DecimalMath.sol";
 import "../../lib/lyra-utils/src/decimals/SignedDecimalMath.sol";
 
-// TODO: use the new FixedPointMathLib
 import "../../lib/lyra-utils/src/math/FixedPointMathLib.sol";
 import "../../lib/lyra-utils/src/arrays/MemoryBinarySearch.sol";
 

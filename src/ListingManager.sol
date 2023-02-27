@@ -73,6 +73,8 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   uint public strikeQueueTime = 1 days;
   /// @notice How long a queued item can exist after queueTime before being considered stale and removed
   uint public queueStaleTime = 1 days;
+  /// @notice Limit strikes generated to be within this moneyness bound
+  uint public maxScaledMoneyness = 1.2 ether;
 
   // boardId => strikes
   mapping(uint => QueuedStrikes) queuedStrikes;
@@ -107,6 +109,11 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     strikeQueueTime = _strikeQueueTime;
     queueStaleTime = _queueStaleTime;
     emit LM_QueueParamsSet(_boardQueueTime, _strikeQueueTime, _queueStaleTime);
+  }
+
+  function setMaxScaledMoneyness(uint _maxScaledMoneyness) external onlyOwner {
+    maxScaledMoneyness = _maxScaledMoneyness;
+    emit LM_MaxScaledMoneynessSet(maxScaledMoneyness);
   }
 
   /////////////////////
@@ -262,7 +269,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     (uint[] memory newStrikes, uint numNewStrikes) = StrikePriceGenerator.getNewStrikes(
       _secToAnnualized(boardDetails.expiry - block.timestamp),
       spotPrice,
-      MAX_SCALED_MONEYNESS,
+      maxScaledMoneyness,
       MAX_NUM_STRIKES,
       board.orderedStrikePrices,
       PIVOTS
@@ -330,12 +337,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     uint spotPrice = _getSpotPrice();
 
     (uint[] memory newStrikes, uint numNewStrikes) = StrikePriceGenerator.getNewStrikes(
-      _secToAnnualized(expiry - block.timestamp),
-      spotPrice,
-      MAX_SCALED_MONEYNESS,
-      MAX_NUM_STRIKES,
-      new uint[](0),
-      PIVOTS
+      _secToAnnualized(expiry - block.timestamp), spotPrice, maxScaledMoneyness, MAX_NUM_STRIKES, new uint[](0), PIVOTS
     );
 
     BoardDetails[] memory boardDetails = getAllBoardDetails();
@@ -554,6 +556,36 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     }
   }
 
+  ///////////
+  // Views //
+  ///////////
+
+  function viewBoardToBeQueued(uint newExpiry) external view returns (uint baseIv, StrikeToAdd[] memory strikesToAdd) {
+    _validateNewBoardExpiry(newExpiry);
+    return _getNewBoardData(newExpiry);
+  }
+
+  function viewStrikesToBeQueued(uint boardId) external view returns (StrikeToAdd[] memory strikesToAdd) {
+    BoardDetails memory boardDetails = getBoardDetails(boardId);
+    VolGenerator.Board memory board = _toVolGeneratorBoard(boardDetails);
+
+    (uint[] memory newStrikes, uint numNewStrikes) = StrikePriceGenerator.getNewStrikes(
+      _secToAnnualized(boardDetails.expiry - block.timestamp),
+      _getSpotPrice(),
+      maxScaledMoneyness,
+      MAX_NUM_STRIKES,
+      board.orderedStrikePrices,
+      PIVOTS
+    );
+
+    strikesToAdd = new StrikeToAdd[](newStrikes.length);
+
+    for (uint i = 0; i < numNewStrikes; i++) {
+      strikesToAdd[i] =
+        StrikeToAdd({strikePrice: newStrikes[i], skew: VolGenerator.getSkewForLiveBoard(newStrikes[i], board)});
+    }
+  }
+
   ///////////////
   // Modifiers //
   ///////////////
@@ -570,6 +602,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
 
   event LM_RiskCouncilSet(address indexed riskCouncil);
   event LM_QueueParamsSet(uint boardQueuedTime, uint strikesQueuedTime, uint staleTime);
+  event LM_MaxScaledMoneynessSet(uint maxScaledMoneyness);
   event LM_StrikeUpdateVetoed(uint indexed boardId, QueuedStrikes exectuedStrike);
   event LM_BoardVetoed(uint indexed expiry, QueuedBoard queuedBoards);
   event LM_QueuedStrikeExecuted(address indexed caller, uint indexed boardId, StrikeToAdd strikeAdded);
