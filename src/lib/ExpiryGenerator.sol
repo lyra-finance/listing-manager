@@ -4,8 +4,6 @@ pragma solidity 0.8.16;
 import "../../lib/openzeppelin-contracts/contracts/utils/Arrays.sol";
 import "../../lib/lyra-utils/src/arrays/UnorderedMemoryArray.sol";
 
-import "forge-std/Test.sol";
-
 /**
  * @title Automated Expiry Generator
  * @author Lyra
@@ -65,29 +63,6 @@ library ExpiryGenerator {
     UnorderedMemoryArray.trimArray(expiries, insertIndex);
 
     return expiries;
-  }
-
-  function checkValidExpiry(uint expiry, uint[] storage fridays) internal view returns (bool) {
-    // find last friday that proceeds expiry
-
-    uint fridayIndex;
-    for(uint i; i < fridays.length; i++) {
-      if (fridays[i] > expiry) {
-        if (i == 0) {
-          revert ('ExpiryGenerator: expiry is before first friday');
-        }
-        fridayIndex = i - 1;
-        break;
-      }
-    }
-    
-    // increment by 7 days until next last friday is hit, if not hit then not valid
-    for(uint i; i < 7; i++) {
-      if ((fridays[fridayIndex] + i * 1 weeks) == expiry) {
-        return true;
-      }
-    }
-    return false;
   }
 
   /////////////
