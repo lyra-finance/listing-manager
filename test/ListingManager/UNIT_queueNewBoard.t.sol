@@ -98,6 +98,18 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
   function testExtrapolateBoardShortExpiryLongerBoard() public {
     // TODO: extrapolating a 1 day expiry board from a 1 week expiry board
     // - 3 strikes (OTM,ATM,ITM)
+    vm.warp(block.timestamp - 2 weeks);
+    uint targetExpiry = block.timestamp + 1 weeks;
+    // live board's expiry is 2 weeks away
+    uint expiry = ExpiryGenerator.getNextFriday(targetExpiry);
+    listingManager.queueNewBoard(expiry);
+    (, ListingManager.StrikeToAdd[] memory strikes) = listingManager.TEST_getNewBoardData(expiry);
+
+    assertGt(strikes.length, 8);
+    assertEq(strikes[0].strikePrice, 1300 ether, "atm strike missing");
+    assertEq(strikes[0].skew, 1 * 1e18, "ATM strike skew not equal to 1");
+
+    assertGt(strikes[1].skew, strikes[0].skew, "ITM strike not less than ATM");
   }
 
   function testExtrapolateBoardLongExpiryShorterBoard() public {
@@ -122,8 +134,6 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
     vm.warp(block.timestamp - 3 weeks);
     uint[] memory lives = optionMarket.getLiveBoards();
     (IOptionMarket.OptionBoard memory board, , , , ) = optionMarket.getBoardAndStrikeDetails(lives[0]);
-    console.log("board expiry: %s", board.expiry);
-    console.log("block timestamp: %s", block.timestamp);
 
     uint targetExpiry = block.timestamp + expiryOffset;
     // live board's expiry is 2 weeks away
@@ -152,7 +162,6 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
     uint expiry = ExpiryGenerator.getNextFriday(targetExpiry);
     vm.assume(expiry != board.expiry);
 
-    console.log('expiry: [%s]', expiry);
     listingManager.queueNewBoard(expiry);
     (, ListingManager.StrikeToAdd[] memory strikes) = listingManager.TEST_getNewBoardData(expiry);
 
