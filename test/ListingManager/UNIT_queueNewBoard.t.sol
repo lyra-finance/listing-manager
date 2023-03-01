@@ -115,10 +115,11 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
   }
 
   function testFUZZ_extrapolateShorterBoard(uint expiryOffset) public {
-    // TODO: fuzz test:
+    // TODO: fuzz test: fialign cause you only
     // - 3 strikes (OTM,ATM,ITM)
     // - 3 skews generated are >= same strikes from a longer dated board
-    vm.assume(expiryOffset < 3 weeks && expiryOffset > 1 weeks);
+    vm.assume(expiryOffset < 3 weeks);
+    vm.warp(block.timestamp - 3 weeks);
     uint[] memory lives = optionMarket.getLiveBoards();
     (IOptionMarket.OptionBoard memory board, , , , ) = optionMarket.getBoardAndStrikeDetails(lives[0]);
     console.log("board expiry: %s", board.expiry);
@@ -145,10 +146,7 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
     expiryOffset = expiryOffset % 4 weeks;
     uint[] memory lives = optionMarket.getLiveBoards();
     (IOptionMarket.OptionBoard memory board, , , , ) = optionMarket.getBoardAndStrikeDetails(lives[0]);
-    console.log("board expiry: %s", board.expiry);
-    console.log("block timestamp: %s", block.timestamp);
-    console.log('expiry offset: [%s]', expiryOffset);
-
+ 
     uint targetExpiry = block.timestamp + expiryOffset;
     // live board's expiry is 2 weeks away
     uint expiry = ExpiryGenerator.getNextFriday(targetExpiry);

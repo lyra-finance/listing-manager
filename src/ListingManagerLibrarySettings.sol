@@ -144,6 +144,8 @@ abstract contract ListingManagerLibrarySettings {
   ];
 
   uint[] LAST_FRIDAYS = [
+    1669363200,
+    1672387200,
     1674806400,
     1677225600,
     1680249600,
