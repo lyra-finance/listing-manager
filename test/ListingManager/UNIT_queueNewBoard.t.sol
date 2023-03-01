@@ -114,21 +114,23 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
     // TODO: works for 0 strikes
   }
 
-  function FUZZ_extrapolateShorterBoard() public {
+  function testFUZZ_extrapolateShorterBoard(uint expiryOffset) public {
     // TODO: fuzz test:
     // - 3 strikes (OTM,ATM,ITM)
     // - 3 skews generated are >= same strikes from a longer dated board
     vm.warp(1674806400);
+    vm.assume(expiryOffset < 30 weeks && expiryOffset > 2 weeks);
+    uint targetExpiry = block.timestamp + expiryOffset;
     OptionMarketMockSetup.mockBoardWithThreeStrikes(
       optionMarket, greekCache, ExpiryGenerator.getNextFriday(block.timestamp + 1 weeks)
     );
+
     // live board's expiry is 2 weeks away
-    vm.warp(block.timestamp + 1 weeks + 4 days);
-    uint expiry = ExpiryGenerator.getNextFriday(block.timestamp);
+    uint expiry = ExpiryGenerator.getNextFriday(targetExpiry);
     listingManager.queueNewBoard(expiry);
     (, ListingManager.StrikeToAdd[] memory strikes) = listingManager.TEST_getNewBoardData(expiry);
 
-    assertEq(strikes.length, 15);
+    assertGt(strikes.length, 8);
     assertEq(strikes[0].strikePrice, 1300 ether, "atm strike missing");
     assertEq(strikes[0].skew, 1 * 1e18, "ATM strike skew not equal to 1");
 
