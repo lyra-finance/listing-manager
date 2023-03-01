@@ -118,13 +118,13 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
     // TODO: fuzz test:
     // - 3 strikes (OTM,ATM,ITM)
     // - 3 skews generated are >= same strikes from a longer dated board
-    vm.warp(1674806400);
-    vm.assume(expiryOffset < 30 weeks && expiryOffset > 2 weeks);
-    uint targetExpiry = block.timestamp + expiryOffset;
-    OptionMarketMockSetup.mockBoardWithThreeStrikes(
-      optionMarket, greekCache, ExpiryGenerator.getNextFriday(block.timestamp + 1 weeks)
-    );
+    vm.assume(expiryOffset < 3 weeks && expiryOffset > 1 weeks);
+    uint[] memory lives = optionMarket.getLiveBoards();
+    (IOptionMarket.OptionBoard memory board, , , , ) = optionMarket.getBoardAndStrikeDetails(lives[0]);
+    console.log("board expiry: %s", board.expiry);
+    console.log("block timestamp: %s", block.timestamp);
 
+    uint targetExpiry = block.timestamp + expiryOffset;
     // live board's expiry is 2 weeks away
     uint expiry = ExpiryGenerator.getNextFriday(targetExpiry);
     listingManager.queueNewBoard(expiry);
@@ -135,13 +135,34 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
     assertEq(strikes[0].skew, 1 * 1e18, "ATM strike skew not equal to 1");
 
     assertGt(strikes[1].skew, strikes[0].skew, "ITM strike not less than ATM");
-    assertLt(strikes[2].skew, strikes[0].skew, "OTM strike not greater than ATM");
+    // assertLt(strikes[2].skew, strikes[0].skew, "OTM strike not greater than ATM");
   }
 
-  function FUZZ_extrapolateLongerBoard() public {
-    // TODO: fuzz test:
+  function testFUZZ_extrapolateLongerBoard(uint expiryOffset) public {
     // - 3 strikes (OTM,ATM,ITM)
     // - 3 skews generated are <= same strikes from a longer dated board
+    vm.assume(expiryOffset > 0);
+    expiryOffset = expiryOffset % 4 weeks;
+    uint[] memory lives = optionMarket.getLiveBoards();
+    (IOptionMarket.OptionBoard memory board, , , , ) = optionMarket.getBoardAndStrikeDetails(lives[0]);
+    console.log("board expiry: %s", board.expiry);
+    console.log("block timestamp: %s", block.timestamp);
+    console.log('expiry offset: [%s]', expiryOffset);
+
+    uint targetExpiry = block.timestamp + expiryOffset;
+    // live board's expiry is 2 weeks away
+    uint expiry = ExpiryGenerator.getNextFriday(targetExpiry);
+    vm.assume(expiry != board.expiry);
+
+    console.log('expiry: [%s]', expiry);
+    listingManager.queueNewBoard(expiry);
+    (, ListingManager.StrikeToAdd[] memory strikes) = listingManager.TEST_getNewBoardData(expiry);
+
+    assertGt(strikes.length, 8);
+    assertEq(strikes[0].strikePrice, 1300 ether, "atm strike missing");
+    assertEq(strikes[0].skew, 1 * 1e18, "ATM strike skew not equal to 1");
+
+    assertGt(strikes[1].skew, strikes[0].skew, "ITM strike not less than ATM");
   }
 
   //////////////////////

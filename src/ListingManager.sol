@@ -312,18 +312,13 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
       revert LM_ExpiryTooShort(expiry, NEW_BOARD_MIN_EXPIRY);
     }
 
-    // uint[] memory validExpiries = getValidExpiries();
-    // for (uint i = 0; i < validExpiries.length; ++i) {
-    //   if (validExpiries[i] == expiry) {
-    //     // matches a valid expiry. If the expiry already exists, it will be caught in _fetchSurroundingBoards()
-    //     return;
-    //   }
-    // }
-
-    if (ExpiryGenerator.checkValidExpiry(expiry, LAST_FRIDAYS)) {
-      return;
+    uint[] memory validExpiries = getValidExpiries();
+    for (uint i = 0; i < validExpiries.length; ++i) {
+      if (validExpiries[i] == expiry) {
+        // matches a valid expiry. If the expiry already exists, it will be caught in _fetchSurroundingBoards()
+        return;
+      }
     }
-
     revert LM_ExpiryDoesntMatchFormat(expiry);
   }
 

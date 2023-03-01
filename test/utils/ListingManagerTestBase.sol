@@ -18,7 +18,7 @@ contract ListingManagerTestBase is Test, OptionMarketMockSetup {
   address riskCouncil = address(0xbee);
 
   constructor() {
-    vm.warp(1600000000);
+    vm.warp(1674806400);
   }
 
   function setUp() public {
