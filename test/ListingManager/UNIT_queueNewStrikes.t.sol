@@ -33,6 +33,16 @@ contract ListingManager_queueNewStrikes_Test is ListingManagerTestBase {
     assertEq(listingManager.getQueuedStrikes(1).strikesToAdd.length, 0);
   }
 
+  function testCannotExecuteStrikeWhenCBActive() public {
+    // TODO: need to mock cb 
+    listingManager.findAndQueueStrikesForBoard(1);
+    listingManager.setQueueParams(0, 0, 365 days);
+    vm.mockCall(address(liquidityPool), abi.encodeWithSignature("CBTimestamp()"), abi.encode(block.timestamp + 5 weeks));
+    listingManager.executeQueuedStrikes(1, 1);
+    ListingManager.QueuedStrikes memory queStrikes = listingManager.getQueuedStrikes(1);
+    assertEq(queStrikes.strikesToAdd.length, 0);
+  }
+
 
   function testFastForwardStrikeUpdate() public {
     listingManager.findAndQueueStrikesForBoard(1);

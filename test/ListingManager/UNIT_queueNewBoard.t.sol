@@ -123,7 +123,11 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
     // - 3 strikes (OTM,ATM,ITM)
   }
 
-  function testExtrapolateBoardZeroStrikes() public {
+    function testExtrapolateBoardZeroStrikes() public {
+      // TODO: 0 strikes
+    }
+
+  function testRevertWithZeroBoards() public {
     // TODO: works for 0 strikes
     OptionMarketMockSetup.setOptionMarketWithNoLiveBoards(optionMarket);
     uint expiry = ExpiryGenerator.getNextFriday(block.timestamp + 1 weeks);
@@ -253,6 +257,23 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
 
     vm.expectEmit(false, false, false, false);
     emit LM_QueuedBoardStale(address(0), 0, 0, 0);
+    listingManager.executeQueuedBoard(expiry);
+  }
+
+  function testExecuteQueuedBoardAfterTime() public {
+    uint expiry = ExpiryGenerator.getNextFriday(block.timestamp + 2 weeks);
+    listingManager.queueNewBoard(expiry);
+
+    listingManager.setQueueParams(0, 0, 10);
+    vm.warp(block.timestamp + 100);
+
+    listingManager.executeQueuedBoard(expiry);
+
+    vm.expectRevert(abi.encodeWithSelector(ListingManager.LM_BoardNotQueued.selector, expiry));
+    listingManager.executeQueuedBoard(expiry);
+
+    listingManager.queueNewBoard(expiry);
+    
     listingManager.executeQueuedBoard(expiry);
   }
 
