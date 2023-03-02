@@ -237,4 +237,11 @@ contract OptionMarketMockSetup is Test {
       )
     );
   }
+
+  function setOptionMarketWithNoLiveBoards(IOptionMarket optionMarket) public {
+    uint[] memory liveBoards = new uint[](0);
+    vm.mockCall(
+      address(optionMarket), abi.encodeWithSelector(IOptionMarket.getLiveBoards.selector), abi.encode(liveBoards)
+    );
+  }
 }

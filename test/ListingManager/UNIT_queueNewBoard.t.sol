@@ -125,6 +125,10 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
 
   function testExtrapolateBoardZeroStrikes() public {
     // TODO: works for 0 strikes
+    OptionMarketMockSetup.setOptionMarketWithNoLiveBoards(optionMarket);
+    uint expiry = ExpiryGenerator.getNextFriday(block.timestamp + 1 weeks);
+    vm.expectRevert(abi.encodeWithSelector(ListingManager.LM_NoBoards.selector));
+    listingManager.queueNewBoard(expiry);
   }
 
   function testFUZZ_extrapolateShorterBoard(uint expiryOffset) public {
@@ -225,6 +229,8 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
     ListingManager.QueuedBoard memory queued = listingManager.getQueuedBoard(expiry);
     assertEq(queued.expiry, expiry);
   }
+
+
 
   /////////////////////////
   // _executeQueuedBoard //
