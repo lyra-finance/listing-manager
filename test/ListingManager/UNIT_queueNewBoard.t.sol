@@ -114,7 +114,8 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
 
   function testExtrapolateBoardLongExpiryShorterBoard() public {
     // TODO: extrapolating a 12w expiry board from a 10w expiry board
-    // - 3 strikes (OTM,ATM,ITM)
+    // - 3 strikes (OTM,ATM,ITM
+    
   }
 
   function testExtrapolateBoardLongExpiryLongerBoard() public {
@@ -247,6 +248,13 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
     vm.expectEmit(false, false, false, false);
     emit LM_QueuedBoardStale(address(0), 0, 0, 0);
     listingManager.executeQueuedBoard(expiry);
+  }
+
+  function testFastForwardQueuedBoard() public {
+    uint expiry = ExpiryGenerator.getNextFriday(block.timestamp + 2 weeks);
+    listingManager.queueNewBoard(expiry);
+    vm.prank(riskCouncil);
+    listingManager.fastForwardQueuedBoard(expiry);
   }
 
   event LM_QueuedBoardStale(address indexed caller, uint indexed expiry, uint staleTimestamp, uint blockTime);

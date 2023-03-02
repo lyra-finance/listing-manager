@@ -65,7 +65,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   IOptionMarket immutable optionMarket;
   IOptionMarketGovernanceWrapper immutable governanceWrapper;
 
-  address riskCouncil;
+  address public riskCouncil;
 
   /// @notice How long a board must be queued before it can be publicly executed
   uint public boardQueueTime = 1 days;

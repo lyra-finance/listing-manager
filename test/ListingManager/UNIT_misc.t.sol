@@ -69,4 +69,22 @@ contract ListingManager_misc_Test is ListingManagerTestBase {
     assertEq(res[0].strikePrice, 1300 ether);
     assertEq(res[0].skew, 3);
   }
+
+  function testOnlyOwnerCanSetRiskCouncil() public {
+    vm.prank(address(0xcc));
+    vm.expectRevert('Ownable: caller is not the owner');
+    listingManager.setRiskCouncil(address(0x1));
+
+    listingManager.setRiskCouncil(address(0x2));
+    assertEq(listingManager.riskCouncil(), address(0x2));
+  }
+
+  function testOnlyOwnerCanSetMaxMoneyness(uint moneyness) public {
+    vm.prank(address(0xcc));
+    vm.expectRevert('Ownable: caller is not the owner');
+    listingManager.setMaxScaledMoneyness(moneyness);
+
+    listingManager.setMaxScaledMoneyness(moneyness);
+    assertEq(listingManager.maxScaledMoneyness(), moneyness);
+  }
 }

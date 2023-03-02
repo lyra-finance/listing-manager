@@ -32,4 +32,14 @@ contract ListingManager_queueNewStrikes_Test is ListingManagerTestBase {
     listingManager.executeQueuedStrikes(1, 100);
     assertEq(listingManager.getQueuedStrikes(1).strikesToAdd.length, 0);
   }
+
+
+  function testFastForwardStrikeUpdate() public {
+    listingManager.findAndQueueStrikesForBoard(1);
+    listingManager.setQueueParams(0, 0, 365 days);
+    assertEq(listingManager.getQueuedStrikes(1).strikesToAdd.length, 14);
+    vm.prank(riskCouncil);
+    listingManager.fastForwardStrikeUpdate(1, 100);
+    assertEq(listingManager.getQueuedStrikes(1).strikesToAdd.length, 0);
+  }
 }
