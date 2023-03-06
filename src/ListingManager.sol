@@ -156,7 +156,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     if (queuedStrikes[boardId].queuedTime + queueStaleTime + strikeQueueTime < block.timestamp) {
       emit LM_QueuedStrikesStale(
         msg.sender, boardId, queuedStrikes[boardId].queuedTime + queueStaleTime + strikeQueueTime, block.timestamp
-        );
+      );
 
       delete queuedStrikes[boardId];
       return;
@@ -206,7 +206,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     if (queuedBoard.queuedTime + boardQueueTime + queueStaleTime < block.timestamp) {
       emit LM_QueuedBoardStale(
         msg.sender, expiry, queuedBoard.queuedTime + boardQueueTime + queueStaleTime, block.timestamp
-        );
+      );
       delete queuedBoards[expiry];
       return;
     }
@@ -356,11 +356,10 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   }
 
   /// @notice Gets the closest board on both sides of the given expiry, converting them to the format required for the vol generator
-  function _fetchSurroundingBoards(BoardDetails[] memory boardDetails, uint expiry)
-    internal
-    view
-    returns (VolGenerator.Board memory shortDated, VolGenerator.Board memory longDated)
-  {
+  function _fetchSurroundingBoards(
+    BoardDetails[] memory boardDetails,
+    uint expiry
+  ) internal view returns (VolGenerator.Board memory shortDated, VolGenerator.Board memory longDated) {
     if (boardDetails.length == 0) {
       revert LM_NoBoards();
     }

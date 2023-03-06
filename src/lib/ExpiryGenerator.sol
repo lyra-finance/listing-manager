@@ -23,19 +23,21 @@ library ExpiryGenerator {
    * @param timestamp Reference timestamp for generating expiries from that date onwards
    * @return expiries The valid expiries for the given parameters
    */
-  function getExpiries(uint nWeeklies, uint nMonthlies, uint timestamp, uint[] storage monthlyExpiries)
-    internal
-    view
-    returns (uint[] memory expiries)
-  {
+  function getExpiries(
+    uint nWeeklies,
+    uint nMonthlies,
+    uint timestamp,
+    uint[] storage monthlyExpiries
+  ) internal view returns (uint[] memory expiries) {
     return _expiriesGenerator(nWeeklies, nMonthlies, timestamp, monthlyExpiries);
   }
 
-  function _expiriesGenerator(uint nWeeklies, uint nMonthlies, uint timestamp, uint[] storage monthlyExpiries)
-    internal
-    view
-    returns (uint[] memory expiries)
-  {
+  function _expiriesGenerator(
+    uint nWeeklies,
+    uint nMonthlies,
+    uint timestamp,
+    uint[] storage monthlyExpiries
+  ) internal view returns (uint[] memory expiries) {
     expiries = new uint[](nWeeklies + nMonthlies);
     uint weeklyExpiry = getNextFriday(timestamp);
 

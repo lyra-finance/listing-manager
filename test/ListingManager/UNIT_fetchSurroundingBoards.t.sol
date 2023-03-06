@@ -212,10 +212,11 @@ contract ListingManager_fetchSurroundingBoards_Test is ListingManagerTestBase {
     return res;
   }
 
-  function getBoardDetailsArray(uint expiry1, uint expiry2, uint expiry3)
-    internal
-    returns (ListingManager.BoardDetails[] memory)
-  {
+  function getBoardDetailsArray(
+    uint expiry1,
+    uint expiry2,
+    uint expiry3
+  ) internal returns (ListingManager.BoardDetails[] memory) {
     ListingManager.BoardDetails[] memory res = new ListingManager.BoardDetails[](3);
     res[0] = ListingManager.BoardDetails({
       expiry: expiry1,
