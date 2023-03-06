@@ -309,7 +309,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
 
   function _validateNewBoardExpiry(uint expiry) internal view {
     if (expiry < block.timestamp + NEW_BOARD_MIN_EXPIRY) {
-      revert LM_ExpiryTooShort(expiry, NEW_BOARD_MIN_EXPIRY);
+      revert LM_ExpiryTooShort(expiry, block.timestamp, NEW_BOARD_MIN_EXPIRY);
     }
 
     uint[] memory validExpiries = getValidExpiries();
@@ -451,6 +451,10 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   function _toVolGeneratorBoard(BoardDetails memory details) internal view returns (VolGenerator.Board memory) {
     uint numStrikes = details.strikes.length;
 
+    if (numStrikes == 0) {
+      revert LM_BoardHasNoStrikes(details.expiry);
+    }
+
     _quickSortStrikes(details.strikes, 0, int(numStrikes - 1));
 
     uint[] memory orderedStrikePrices = new uint[](numStrikes);
@@ -459,6 +463,10 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     for (uint i = 0; i < numStrikes; i++) {
       orderedStrikePrices[i] = details.strikes[i].strikePrice;
       orderedSkews[i] = details.strikes[i].skew;
+    }
+
+    if (details.expiry <= block.timestamp) {
+      revert LM_BoardExpired(details.expiry, block.timestamp);
     }
 
     return VolGenerator.Board({
@@ -627,7 +635,9 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
 
   error LM_TooEarlyToExecuteStrike(uint boardId, uint queuedTime, uint blockTime);
 
-  error LM_BoardStale(uint expiry, uint staleTime, uint blockTime);
+  error LM_BoardHasNoStrikes(uint expiry);
+
+  error LM_BoardExpired(uint expiry, uint blockTime);
 
   error LM_TooEarlyToExecuteBoard(uint expiry, uint queuedTime, uint blockTime);
 
@@ -639,7 +649,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
 
   error LM_ExpiryDoesntMatchFormat(uint expiry);
 
-  error LM_ExpiryTooShort(uint expiry, uint minExpiry);
+  error LM_ExpiryTooShort(uint expiry, uint blockTime, uint minExpiry);
 
   error LM_NoBoards();
 

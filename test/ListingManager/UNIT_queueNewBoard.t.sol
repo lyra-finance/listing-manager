@@ -38,12 +38,12 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
     OptionMarketMockSetup.mockBoardWithThreeStrikes(
       optionMarket, greekCache, ExpiryGenerator.getNextFriday(block.timestamp + 13 weeks)
     );
-    // live board's expiry is 2 week away
-    uint expiry = ExpiryGenerator.getNextFriday(block.timestamp + 12 weeks);
+    uint[] memory validExpiries = listingManager.getValidExpiries();
+    uint expiry = validExpiries[validExpiries.length - 1];
     listingManager.queueNewBoard(expiry);
     (, ListingManager.StrikeToAdd[] memory strikes) = listingManager.TEST_getNewBoardData(expiry);
 
-    assertEq(strikes.length, 12);
+    assertEq(strikes.length, 14);
 
     assertEq(strikes[0].strikePrice, 1300 ether, "atm strike missing");
     assertEq(strikes[0].skew, 1 * 1e18, "ATM strike skew not equal to 1");
@@ -54,20 +54,18 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
 
   // This will throw if when a board with zero strikes is meant to be extrapolated form
   function testRevertInterpolateBoardZeroStrikes() public {
-    // TODO: works for 0 strikes
     vm.warp(1674806400);
-    uint expiry = ExpiryGenerator.getNextFriday(block.timestamp + 13 weeks);
-    OptionMarketMockSetup.mockBoardWithZeroStrikes(optionMarket, greekCache, expiry);
+    uint boardExpiry = ExpiryGenerator.getNextFriday(block.timestamp + 13 weeks);
+    OptionMarketMockSetup.mockBoardWithZeroStrikes(optionMarket, greekCache, boardExpiry);
     // live board's expiry is 2 week away
-    expiry = ExpiryGenerator.getNextFriday(block.timestamp + 12 weeks);
-    vm.expectRevert();
-    listingManager.queueNewBoard(expiry);
+    uint newExpiry = ExpiryGenerator.getNextFriday(block.timestamp + 2 weeks);
+    vm.expectRevert(abi.encodeWithSelector(ListingManager.LM_BoardHasNoStrikes.selector, boardExpiry));
+    listingManager.queueNewBoard(newExpiry);
   }
 
   function FUZZ_testInterpolateBoard() public {
     // TODO: fuzz test (3 strikes per board, OTM, ATM, ITM):
     //   - lower skew <= generated skew <= upper skew for the same strikes
-    assertTrue(false);
   }
 
   ///////////////////////
@@ -75,19 +73,14 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
   ///////////////////////
 
   function testExtrapolateBoardShortExpiryShorterBoard() public {
-    // TODO: extrapolating a 1 day expiry board from a 6 hr expiry board
     // - 3 strikes (OTM,ATM,ITM)
     vm.warp(1674806400);
-    OptionMarketMockSetup.mockBoardWithThreeStrikes(
-      optionMarket, greekCache, ExpiryGenerator.getNextFriday(block.timestamp + 1 weeks)
-    );
-    // live board's expiry is 2 weeks away
-    vm.warp(block.timestamp + 1 weeks + 4 days);
     uint expiry = ExpiryGenerator.getNextFriday(block.timestamp);
+    OptionMarketMockSetup.mockBoardWithThreeStrikes(optionMarket, greekCache, expiry - 1 days);
     listingManager.queueNewBoard(expiry);
     (, ListingManager.StrikeToAdd[] memory strikes) = listingManager.TEST_getNewBoardData(expiry);
 
-    assertEq(strikes.length, 15);
+    assertEq(strikes.length, 17);
     assertEq(strikes[0].strikePrice, 1300 ether, "atm strike missing");
     assertEq(strikes[0].skew, 1 * 1e18, "ATM strike skew not equal to 1");
 
@@ -115,7 +108,6 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
   function testExtrapolateBoardLongExpiryShorterBoard() public {
     // TODO: extrapolating a 12w expiry board from a 10w expiry board
     // - 3 strikes (OTM,ATM,ITM
-    
   }
 
   function testExtrapolateBoardLongExpiryLongerBoard() public {
@@ -123,26 +115,22 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
     // - 3 strikes (OTM,ATM,ITM)
   }
 
-    function testExtrapolateBoardZeroStrikes() public {
-      // TODO: 0 strikes
-    }
+  function testExtrapolateBoardZeroStrikes() public {
+    // TODO: 0 strikes
+  }
 
   function testRevertWithZeroBoards() public {
-    // TODO: works for 0 strikes
-    OptionMarketMockSetup.setOptionMarketWithNoLiveBoards(optionMarket);
+    OptionMarketMockSetup.mockGetLiveBoards(optionMarket, new uint[](0));
     uint expiry = ExpiryGenerator.getNextFriday(block.timestamp + 1 weeks);
     vm.expectRevert(abi.encodeWithSelector(ListingManager.LM_NoBoards.selector));
     listingManager.queueNewBoard(expiry);
   }
 
   function testFUZZ_extrapolateShorterBoard(uint expiryOffset) public {
-    // TODO: fuzz test: fialign cause you only
     // - 3 strikes (OTM,ATM,ITM)
     // - 3 skews generated are >= same strikes from a longer dated board
     vm.assume(expiryOffset < 3 weeks);
     vm.warp(block.timestamp - 3 weeks);
-    uint[] memory lives = optionMarket.getLiveBoards();
-    (IOptionMarket.OptionBoard memory board, , , , ) = optionMarket.getBoardAndStrikeDetails(lives[0]);
 
     uint targetExpiry = block.timestamp + expiryOffset;
     // live board's expiry is 2 weeks away
@@ -159,13 +147,19 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
   }
 
   function testFUZZ_extrapolateLongerBoard(uint expiryOffset) public {
+    // extrapolate a 12 week board from a 16 week board
     // - 3 strikes (OTM,ATM,ITM)
     // - 3 skews generated are <= same strikes from a longer dated board
+
+    OptionMarketMockSetup.mockBoardWithThreeStrikes(
+      optionMarket, greekCache, ExpiryGenerator.getNextFriday(block.timestamp + 2 weeks)
+    );
+
     vm.assume(expiryOffset > 0);
     expiryOffset = expiryOffset % 4 weeks;
     uint[] memory lives = optionMarket.getLiveBoards();
-    (IOptionMarket.OptionBoard memory board, , , , ) = optionMarket.getBoardAndStrikeDetails(lives[0]);
- 
+    (IOptionMarket.OptionBoard memory board,,,,) = optionMarket.getBoardAndStrikeDetails(lives[0]);
+
     uint targetExpiry = block.timestamp + expiryOffset;
     // live board's expiry is 2 weeks away
     uint expiry = ExpiryGenerator.getNextFriday(targetExpiry);
@@ -213,7 +207,7 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
     // set the CB to not revert
     vm.mockCall(address(liquidityPool), abi.encodeWithSelector(ILiquidityPool.CBTimestamp.selector), abi.encode(0));
     expiry = expiry - 2 weeks;
-    vm.expectRevert(abi.encodeWithSelector(ListingManager.LM_ExpiryTooShort.selector, expiry, 7 days));
+    vm.expectRevert(abi.encodeWithSelector(ListingManager.LM_ExpiryTooShort.selector, expiry, block.timestamp, 7 days));
     listingManager.queueNewBoard(expiry);
 
     // should revert, expiry not a friday
@@ -234,8 +228,6 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
     assertEq(queued.expiry, expiry);
   }
 
-
-
   /////////////////////////
   // _executeQueuedBoard //
   /////////////////////////
@@ -255,8 +247,10 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
 
     listingManager.queueNewBoard(expiry);
 
+    ListingManager.QueuedBoard memory queuedBoard;
+
     vm.expectEmit(false, false, false, false);
-    emit LM_QueuedBoardStale(address(0), 0, 0, 0);
+    emit LM_QueuedBoardExecuted(address(0), 0, queuedBoard);
     listingManager.executeQueuedBoard(expiry);
   }
 
@@ -273,7 +267,7 @@ contract ListingManager_queueNewBoard_Test is ListingManagerTestBase {
     listingManager.executeQueuedBoard(expiry);
 
     listingManager.queueNewBoard(expiry);
-    
+
     listingManager.executeQueuedBoard(expiry);
   }
 

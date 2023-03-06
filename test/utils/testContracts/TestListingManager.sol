@@ -14,6 +14,7 @@ contract TestListingManager is ListingManager {
 
   function TEST_getNewBoardData(uint newExpiry)
     external
+    view
     returns (uint baseIv, ListingManager.StrikeToAdd[] memory boards)
   {
     return _getNewBoardData(newExpiry);
@@ -27,12 +28,13 @@ contract TestListingManager is ListingManager {
     return _fetchSurroundingBoards(boardDetails, expiry);
   }
 
-  function TEST_secToAnnualized(uint sec) external view returns (uint) {
+  function TEST_secToAnnualized(uint sec) external pure returns (uint) {
     return _secToAnnualized(sec);
   }
 
   function TEST_quickSortStrikes(ListingManager.StrikeDetails[] memory arr)
     public
+    pure
     returns (ListingManager.StrikeDetails[] memory result)
   {
     // sorting happens in place. ALWAYS pass in 0 and length - 1
@@ -41,7 +43,7 @@ contract TestListingManager is ListingManager {
     return arr;
   }
 
-  function TEST_isCBActive() public returns (bool) {
+  function TEST_isCBActive() public view returns (bool) {
     return isCBActive();
   }
 }

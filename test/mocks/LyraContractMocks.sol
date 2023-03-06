@@ -15,7 +15,7 @@ contract MockBaseExchangeAdapter is IBaseExchangeAdapter {
 }
 
 contract MockOptionMarket is IOptionMarket {
-  function getBoardAndStrikeDetails(uint boardId)
+  function getBoardAndStrikeDetails(uint /* boardId */ )
     external
     pure
     override
@@ -36,11 +36,11 @@ contract MockOptionMarket is IOptionMarket {
 }
 
 contract MockOptionGreekCache is IOptionGreekCache {
-  function getBoardGreeksView(uint boardId) external pure override returns (BoardGreeksView memory boardView) {
+  function getBoardGreeksView(uint /* boardId */ ) external pure override returns (BoardGreeksView memory boardView) {
     return boardView;
   }
 
-  function getOptionBoardCache(uint boardId) external pure override returns (OptionBoardCache memory boardCache) {
+  function getOptionBoardCache(uint /* boardId */ ) external pure override returns (OptionBoardCache memory boardCache) {
     return boardCache;
   }
 }
@@ -52,12 +52,15 @@ contract MockLiquidityPool is ILiquidityPool {
 }
 
 contract MockOptionMarketGovernanceWrapper is IOptionMarketGovernanceWrapper {
-  function addStrikeToBoard(uint boardId, uint strikePrice, uint skew) external {}
+  function addStrikeToBoard(uint, /* boardId */ uint, /* strikePrice */ uint /* skew */ ) external {}
 
-  function createOptionBoard(uint expiry, uint baseIV, uint[] memory strikePrices, uint[] memory skews, bool frozen)
-    external
-    returns (uint boardId)
-  {
+  function createOptionBoard(
+    uint, /* expiry */
+    uint, /* baseIV */
+    uint[] memory, /* strikePrices */
+    uint[] memory, /* skews */
+    bool /* frozen */
+  ) external pure returns (uint boardId) {
     return boardId;
   }
 }
