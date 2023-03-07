@@ -3,7 +3,7 @@ Contracts for automatic generation of boards, strikes and initial volatilities
 
 ## Installation and Build
 ```shell
-git submodule update --init --recursive
+forge install
 forge build
 ```
 
