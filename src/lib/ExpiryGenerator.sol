@@ -47,7 +47,6 @@ library ExpiryGenerator {
       weeklyExpiry += 7 days;
     }
 
-    // TODO: consider if we want to start from last weekly seen and get _next_ 3 monthlies
     uint monthlyIndex = Arrays.findUpperBound(monthlyExpiries, timestamp);
 
     // if there is more than 1 monthly add to expiries array
@@ -58,8 +57,7 @@ library ExpiryGenerator {
         // then we need to add the next friday
         continue;
       }
-      expiries[insertIndex] = monthlyStamp;
-      ++insertIndex;
+      expiries[insertIndex++] = monthlyStamp;
     }
 
     UnorderedMemoryArray.trimArray(expiries, insertIndex);

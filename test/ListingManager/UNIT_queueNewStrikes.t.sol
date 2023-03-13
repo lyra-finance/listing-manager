@@ -16,13 +16,16 @@ contract ListingManager_queueNewStrikes_Test is ListingManagerTestBase {
   // TODO: list out exhaustive test cases
   function testFindAndQueueStrikesForBoard() public {
     listingManager.findAndQueueStrikesForBoard(1);
+
+    ListingManager.QueuedStrikes[] memory queuedStrikes = listingManager.getAllQueuedStrikes();
+    assertEq(queuedStrikes.length, 1);
+    assertEq(queuedStrikes[0].strikesToAdd.length, 14);
   }
 
   ///////////////////////////
   // _executeQueuedStrikes //
   ///////////////////////////
 
-  // TODO: list out exhaustive test cases
   function testExecuteQueuedStrikes() public {
     listingManager.findAndQueueStrikesForBoard(1);
     listingManager.setQueueParams(0, 0, 365 days);
@@ -34,7 +37,6 @@ contract ListingManager_queueNewStrikes_Test is ListingManagerTestBase {
   }
 
   function testCannotExecuteStrikeWhenCBActive() public {
-    // TODO: need to mock cb
     listingManager.findAndQueueStrikesForBoard(1);
     listingManager.setQueueParams(0, 0, 365 days);
     vm.mockCall(address(liquidityPool), abi.encodeWithSignature("CBTimestamp()"), abi.encode(block.timestamp + 5 weeks));
