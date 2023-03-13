@@ -239,10 +239,11 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   // Queue new strikes //
   ///////////////////////
 
-  // given no strikes queued for the board currently (and also check things like CBs in the liquidity pool)
-  // for the given board, see if any strikes can be added based on the schema
-  // if so; request the skews from the libraries
-  // and then add to queue
+  /**
+   * @dev given no strikes queued for the board currently (and also checking things like CBs in the liquidity pool)
+   * for the given board, see if any strikes can be added based on the schema, and if so; extrapolate/interpolate the
+   * skews from surrounding strikes
+   */
   function findAndQueueStrikesForBoard(uint boardId) external {
     if (isCBActive()) {
       revert LM_CBActive(block.timestamp);
@@ -293,6 +294,10 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   // Queue new Board //
   /////////////////////
 
+  /**
+   * @dev Check if a new expiry can be queued (i.e. doesnt exist and matches the expiry generation format) and if so
+   * figure out baseIv and skews for new strikes generated for the board - and queue it up for execution at a later time
+   */
   function queueNewBoard(uint newExpiry) external {
     if (isCBActive()) {
       revert LM_CBActive(block.timestamp);
@@ -507,7 +512,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     return exchangeAdapter.getSpotPriceForMarket(address(optionMarket), IBaseExchangeAdapter.PriceType.REFERENCE);
   }
 
-  function isCBActive() internal view returns (bool) {
+  function isCBActive() public view returns (bool) {
     return liquidityPool.CBTimestamp() > block.timestamp;
   }
 
@@ -525,6 +530,34 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
 
   function getValidExpiries() public view returns (uint[] memory validExpiries) {
     return ExpiryGenerator.getExpiries(NUM_WEEKLIES, NUM_MONTHLIES, block.timestamp, LAST_FRIDAYS);
+  }
+
+  function getMissingExpiries() public view returns (uint[] memory missingExpiries) {
+    uint[] memory validExpiries = getValidExpiries();
+    uint missingCount = 0;
+    BoardDetails[] memory boardDetails = getAllBoardDetails();
+    missingExpiries = new uint[](validExpiries.length);
+
+    for (uint i = 0; i < validExpiries.length; ++i) {
+      uint expiryToFind = validExpiries[i];
+      bool found = false;
+      for (uint j = 0; j < boardDetails.length; ++j) {
+        if (boardDetails[j].expiry == expiryToFind) {
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        // skip those that are too close to expiry
+        if (expiryToFind > block.timestamp + NEW_BOARD_MIN_EXPIRY) {
+          missingExpiries[missingCount++] = expiryToFind;
+        }
+      }
+    }
+
+    UnorderedMemoryArray.trimArray(missingExpiries, missingCount);
+
+    return missingExpiries;
   }
 
   //////////

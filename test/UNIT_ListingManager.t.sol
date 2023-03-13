@@ -29,4 +29,11 @@ contract ListingManagerTest is ListingManagerTestBase {
 
     assertEq(strikes.length, 15);
   }
+
+  function testGetMissingExpiries() public {
+    uint[] memory missingExpiries = listingManager.getMissingExpiries();
+    for (uint i = 0; i < missingExpiries.length; i++) {
+      listingManager.queueNewBoard(missingExpiries[i]);
+    }
+  }
 }
