@@ -18,6 +18,8 @@ import "./lib/ExpiryGenerator.sol";
 import "./ListingManagerLibrarySettings.sol";
 import "../lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol";
 
+import "forge-std/console.sol";
+
 contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   using DecimalMath for uint;
 
@@ -558,6 +560,49 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     UnorderedMemoryArray.trimArray(missingExpiries, missingCount);
 
     return missingExpiries;
+  }
+
+  function getAllQueuedBoards() external view returns (QueuedBoard[] memory allQueuedBoards) {
+    uint[] memory validExpiries = getValidExpiries();
+    uint validCount = 0;
+    for (uint i = 0; i < validExpiries.length; ++i) {
+      if (queuedBoards[validExpiries[i]].expiry != 0) {
+        validCount++;
+      }
+    }
+
+    allQueuedBoards = new QueuedBoard[](validCount);
+
+    uint insertedCount = 0;
+    for (uint i = 0; i < validExpiries.length; ++i) {
+      if (queuedBoards[validExpiries[i]].expiry != 0) {
+        // iterating backwards over validCount will mean boards are returned in reverse order of those returned
+        // by getValidExpiries()
+        allQueuedBoards[--validCount] = queuedBoards[validExpiries[i]];
+      }
+    }
+  }
+
+  function getAllQueuedStrikes() external view returns (QueuedStrikes[] memory allQueuedStrikes) {
+    uint[] memory liveBoards = optionMarket.getLiveBoards();
+
+    uint validCount = 0;
+    for (uint i = 0; i < liveBoards.length; ++i) {
+      if (queuedStrikes[liveBoards[i]].boardId != 0) {
+        validCount++;
+      }
+    }
+
+    allQueuedStrikes = new QueuedStrikes[](validCount);
+
+    uint insertedCount = 0;
+    for (uint i = 0; i < liveBoards.length; ++i) {
+      if (queuedStrikes[liveBoards[i]].boardId != 0) {
+        // iterating backwards over validCount will mean boards are returned in reverse order of those returned
+        // by getLiveBoards()
+        allQueuedStrikes[--validCount] = queuedStrikes[liveBoards[i]];
+      }
+    }
   }
 
   //////////

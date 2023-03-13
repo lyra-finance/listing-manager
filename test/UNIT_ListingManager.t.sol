@@ -35,5 +35,9 @@ contract ListingManagerTest is ListingManagerTestBase {
     for (uint i = 0; i < missingExpiries.length; i++) {
       listingManager.queueNewBoard(missingExpiries[i]);
     }
+    ListingManager.QueuedBoard[] memory allQueuedBoards = listingManager.getAllQueuedBoards();
+    for (uint i = 0; i < allQueuedBoards.length; i++) {
+      assertEq(allQueuedBoards[i].expiry, missingExpiries[allQueuedBoards.length - i - 1]);
+    }
   }
 }
