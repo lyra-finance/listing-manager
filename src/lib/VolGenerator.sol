@@ -307,7 +307,6 @@ library VolGenerator {
    * @return variance Variance of the given strike.
    */
   function getVariance(uint baseIv, uint skew) internal pure returns (uint variance) {
-    // todo: good candidate for a standalone Lyra-util library
     variance = baseIv.multiplyDecimal(skew);
     return variance.multiplyDecimal(variance);
   }

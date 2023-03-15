@@ -2,12 +2,6 @@
 pragma solidity 0.8.16;
 
 abstract contract ListingManagerLibrarySettings {
-  uint constant NEW_BOARD_MIN_EXPIRY = 7 days;
-  uint constant NEW_STRIKE_MIN_EXPIRY = 2 days;
-  uint constant NUM_WEEKLIES = 3;
-  uint constant NUM_MONTHLIES = 3;
-  uint constant MAX_NUM_STRIKES = 25;
-
   uint[] PIVOTS = [
     1e6,
     2e6,
