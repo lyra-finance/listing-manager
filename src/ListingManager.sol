@@ -69,14 +69,27 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
 
   address public riskCouncil;
 
+  /// @notice Limit new queued boards to have an expiry greater than this
+  uint public newBoardMinExpiry = 7 days;
+  /// @notice Limit new strikes to be added to boards that have an expiry greater than this
+  uint public newStrikeMinExpiry = 2 days;
+
+  /// @notice How many weekly expiries are considered valid for queuing new boards
+  uint public numWeeklies = 3;
+  /// @notice How many monthly expiries are considered valid for queuing new boards
+  uint public numMonthlies = 3;
+
+  /// @notice The max number of strikes that a single board can have when generated
+  uint public maxNumStrikes = 25;
+  /// @notice Limit strikes generated to be within this moneyness bound
+  uint public maxScaledMoneyness = 1.2 ether;
+
   /// @notice How long a board must be queued before it can be publicly executed
   uint public boardQueueTime = 1 days;
   /// @notice How long new strikes must be queued before they can be publicly executed
   uint public strikeQueueTime = 1 days;
   /// @notice How long a queued item can exist after queueTime before being considered stale and removed
   uint public queueStaleTime = 1 days;
-  /// @notice Limit strikes generated to be within this moneyness bound
-  uint public maxScaledMoneyness = 1.2 ether;
 
   // boardId => strikes
   mapping(uint => QueuedStrikes) queuedStrikes;
@@ -106,16 +119,30 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     emit LM_RiskCouncilSet(_riskCouncil);
   }
 
+  function setListingManagerParams(
+    uint _newBoardMinExpiry,
+    uint _newStrikeMinExpiry,
+    uint _numWeeklies,
+    uint _numMonthlies,
+    uint _maxNumStrikes,
+    uint _maxScaledMoneyness
+  ) external onlyOwner {
+    newBoardMinExpiry = _newBoardMinExpiry;
+    newStrikeMinExpiry = _newStrikeMinExpiry;
+    numWeeklies = _numWeeklies;
+    numMonthlies = _numMonthlies;
+    maxNumStrikes = _maxNumStrikes;
+    maxScaledMoneyness = _maxScaledMoneyness;
+    emit LM_ListingManagerParamsSet(
+      _newBoardMinExpiry, _newStrikeMinExpiry, _numWeeklies, _numMonthlies, _maxNumStrikes, _maxScaledMoneyness
+    );
+  }
+
   function setQueueParams(uint _boardQueueTime, uint _strikeQueueTime, uint _queueStaleTime) external onlyOwner {
     boardQueueTime = _boardQueueTime;
     strikeQueueTime = _strikeQueueTime;
     queueStaleTime = _queueStaleTime;
     emit LM_QueueParamsSet(_boardQueueTime, _strikeQueueTime, _queueStaleTime);
-  }
-
-  function setMaxScaledMoneyness(uint _maxScaledMoneyness) external onlyOwner {
-    maxScaledMoneyness = _maxScaledMoneyness;
-    emit LM_MaxScaledMoneynessSet(maxScaledMoneyness);
   }
 
   /////////////////////
@@ -257,7 +284,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
 
     BoardDetails memory boardDetails = getBoardDetails(boardId);
 
-    if (boardDetails.expiry < block.timestamp + NEW_STRIKE_MIN_EXPIRY) {
+    if (boardDetails.expiry < block.timestamp + newStrikeMinExpiry) {
       revert LM_TooCloseToExpiry(boardDetails.expiry, boardId);
     }
 
@@ -273,7 +300,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
       _secToAnnualized(boardDetails.expiry - block.timestamp),
       spotPrice,
       maxScaledMoneyness,
-      MAX_NUM_STRIKES,
+      maxNumStrikes,
       board.orderedStrikePrices,
       PIVOTS
     );
@@ -315,8 +342,8 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   }
 
   function _validateNewBoardExpiry(uint expiry) internal view {
-    if (expiry < block.timestamp + NEW_BOARD_MIN_EXPIRY) {
-      revert LM_ExpiryTooShort(expiry, block.timestamp, NEW_BOARD_MIN_EXPIRY);
+    if (expiry < block.timestamp + newBoardMinExpiry) {
+      revert LM_ExpiryTooShort(expiry, block.timestamp, newBoardMinExpiry);
     }
 
     uint[] memory validExpiries = getValidExpiries();
@@ -344,7 +371,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     uint spotPrice = _getSpotPrice();
 
     (uint[] memory newStrikes, uint numNewStrikes) = StrikePriceGenerator.getNewStrikes(
-      _secToAnnualized(expiry - block.timestamp), spotPrice, maxScaledMoneyness, MAX_NUM_STRIKES, new uint[](0), PIVOTS
+      _secToAnnualized(expiry - block.timestamp), spotPrice, maxScaledMoneyness, maxNumStrikes, new uint[](0), PIVOTS
     );
 
     BoardDetails[] memory boardDetails = getAllBoardDetails();
@@ -531,7 +558,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   }
 
   function getValidExpiries() public view returns (uint[] memory validExpiries) {
-    return ExpiryGenerator.getExpiries(NUM_WEEKLIES, NUM_MONTHLIES, block.timestamp, LAST_FRIDAYS);
+    return ExpiryGenerator.getExpiries(numWeeklies, numMonthlies, block.timestamp, LAST_FRIDAYS);
   }
 
   function getMissingExpiries() public view returns (uint[] memory missingExpiries) {
@@ -551,7 +578,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
       }
       if (!found) {
         // skip those that are too close to expiry
-        if (expiryToFind > block.timestamp + NEW_BOARD_MIN_EXPIRY) {
+        if (expiryToFind > block.timestamp + newBoardMinExpiry) {
           missingExpiries[missingCount++] = expiryToFind;
         }
       }
@@ -573,7 +600,6 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
 
     allQueuedBoards = new QueuedBoard[](validCount);
 
-    uint insertedCount = 0;
     for (uint i = 0; i < validExpiries.length; ++i) {
       if (queuedBoards[validExpiries[i]].expiry != 0) {
         // iterating backwards over validCount will mean boards are returned in reverse order of those returned
@@ -595,7 +621,6 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
 
     allQueuedStrikes = new QueuedStrikes[](validCount);
 
-    uint insertedCount = 0;
     for (uint i = 0; i < liveBoards.length; ++i) {
       if (queuedStrikes[liveBoards[i]].boardId != 0) {
         // iterating backwards over validCount will mean boards are returned in reverse order of those returned
@@ -658,7 +683,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
       _secToAnnualized(boardDetails.expiry - block.timestamp),
       _getSpotPrice(),
       maxScaledMoneyness,
-      MAX_NUM_STRIKES,
+      maxNumStrikes,
       board.orderedStrikePrices,
       PIVOTS
     );
@@ -686,8 +711,15 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   /////////////
 
   event LM_RiskCouncilSet(address indexed riskCouncil);
+  event LM_ListingManagerParamsSet(
+    uint newBoardMinExpiry,
+    uint newStrikeMinExpiry,
+    uint numWeeklies,
+    uint numMonthlies,
+    uint maxNumStrikes,
+    uint maxScaledMoneyness
+  );
   event LM_QueueParamsSet(uint boardQueuedTime, uint strikesQueuedTime, uint staleTime);
-  event LM_MaxScaledMoneynessSet(uint maxScaledMoneyness);
   event LM_StrikeUpdateVetoed(uint indexed boardId, QueuedStrikes exectuedStrike);
   event LM_BoardVetoed(uint indexed expiry, QueuedBoard queuedBoards);
   event LM_QueuedStrikeExecuted(address indexed caller, uint indexed boardId, StrikeToAdd strikeAdded);

@@ -80,12 +80,29 @@ contract ListingManager_misc_Test is ListingManagerTestBase {
     assertEq(listingManager.riskCouncil(), address(0x2));
   }
 
-  function testOnlyOwnerCanSetMaxMoneyness(uint moneyness) public {
+  function testOnlyOwnerCanSetParams(
+    uint newBoardMinExpiry,
+    uint newStrikeMinExpiry,
+    uint numWeeklies,
+    uint numMonthlies,
+    uint maxNumStrikes,
+    uint maxScaledMoneyness
+  ) public {
     vm.prank(address(0xcc));
     vm.expectRevert("Ownable: caller is not the owner");
-    listingManager.setMaxScaledMoneyness(moneyness);
+    listingManager.setListingManagerParams(
+      newBoardMinExpiry, newStrikeMinExpiry, numWeeklies, numMonthlies, maxNumStrikes, maxScaledMoneyness
+    );
 
-    listingManager.setMaxScaledMoneyness(moneyness);
-    assertEq(listingManager.maxScaledMoneyness(), moneyness);
+    listingManager.setListingManagerParams(
+      newBoardMinExpiry, newStrikeMinExpiry, numWeeklies, numMonthlies, maxNumStrikes, maxScaledMoneyness
+    );
+
+    assertEq(listingManager.newBoardMinExpiry(), newBoardMinExpiry);
+    assertEq(listingManager.newStrikeMinExpiry(), newStrikeMinExpiry);
+    assertEq(listingManager.numWeeklies(), numWeeklies);
+    assertEq(listingManager.numMonthlies(), numMonthlies);
+    assertEq(listingManager.maxNumStrikes(), maxNumStrikes);
+    assertEq(listingManager.maxScaledMoneyness(), maxScaledMoneyness);
   }
 }
