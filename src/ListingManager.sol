@@ -69,6 +69,8 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
 
   /// @notice Limit new queued boards to have an expiry greater than this
   uint public newBoardMinExpiry = 7 days;
+  /// @notice Limit the expiry of the added boards to be lower than this
+  uint public newBoardMaxExpiry = 10 weeks;
   /// @notice Limit new strikes to be added to boards that have an expiry greater than this
   uint public newStrikeMinExpiry = 2 days;
 
@@ -119,13 +121,18 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
 
   function setListingManagerParams(
     uint _newBoardMinExpiry,
+    uint _newBoardMaxExpiry,
     uint _newStrikeMinExpiry,
     uint _numWeeklies,
     uint _numMonthlies,
     uint _maxNumStrikes,
     uint _maxScaledMoneyness
   ) external onlyOwner {
+    if (_numMonthlies > 6 || _numWeeklies > 12) {
+      revert LM_InvalidParams();
+    }
     newBoardMinExpiry = _newBoardMinExpiry;
+    newBoardMaxExpiry = _newBoardMaxExpiry;
     newStrikeMinExpiry = _newStrikeMinExpiry;
     numWeeklies = _numWeeklies;
     numMonthlies = _numMonthlies;
@@ -342,6 +349,9 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   function _validateNewBoardExpiry(uint expiry) internal view {
     if (expiry < block.timestamp + newBoardMinExpiry) {
       revert LM_ExpiryTooShort(expiry, block.timestamp, newBoardMinExpiry);
+    }
+    if (expiry > block.timestamp + newBoardMaxExpiry) {
+      revert LM_ExpiryTooLong(expiry, block.timestamp, newBoardMaxExpiry);
     }
 
     uint[] memory validExpiries = getValidExpiries();
@@ -733,6 +743,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   ////////////
   // Errors //
   ////////////
+  error LM_InvalidParams();
 
   error LM_ExpiryExists(uint expiry);
 
@@ -757,6 +768,8 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   error LM_ExpiryDoesntMatchFormat(uint expiry);
 
   error LM_ExpiryTooShort(uint expiry, uint blockTime, uint minExpiry);
+
+  error LM_ExpiryTooLong(uint expiry, uint blockTime, uint maxExpiry);
 
   error LM_NoBoards();
 

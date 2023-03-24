@@ -82,23 +82,39 @@ contract ListingManager_misc_Test is ListingManagerTestBase {
 
   function testOnlyOwnerCanSetParams(
     uint newBoardMinExpiry,
+    uint newBoardMaxExpiry,
     uint newStrikeMinExpiry,
     uint numWeeklies,
     uint numMonthlies,
     uint maxNumStrikes,
     uint maxScaledMoneyness
   ) public {
+    vm.assume(numWeeklies <= 12);
+    vm.assume(numMonthlies <= 6);
     vm.prank(address(0xcc));
     vm.expectRevert("Ownable: caller is not the owner");
     listingManager.setListingManagerParams(
-      newBoardMinExpiry, newStrikeMinExpiry, numWeeklies, numMonthlies, maxNumStrikes, maxScaledMoneyness
+      newBoardMinExpiry,
+      newBoardMaxExpiry,
+      newStrikeMinExpiry,
+      numWeeklies,
+      numMonthlies,
+      maxNumStrikes,
+      maxScaledMoneyness
     );
 
     listingManager.setListingManagerParams(
-      newBoardMinExpiry, newStrikeMinExpiry, numWeeklies, numMonthlies, maxNumStrikes, maxScaledMoneyness
+      newBoardMinExpiry,
+      newBoardMaxExpiry,
+      newStrikeMinExpiry,
+      numWeeklies,
+      numMonthlies,
+      maxNumStrikes,
+      maxScaledMoneyness
     );
 
     assertEq(listingManager.newBoardMinExpiry(), newBoardMinExpiry);
+    assertEq(listingManager.newBoardMaxExpiry(), newBoardMaxExpiry);
     assertEq(listingManager.newStrikeMinExpiry(), newStrikeMinExpiry);
     assertEq(listingManager.numWeeklies(), numWeeklies);
     assertEq(listingManager.numMonthlies(), numMonthlies);
