@@ -46,6 +46,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   // In-memory //
   ///////////////
   struct BoardDetails {
+    uint boardId;
     uint expiry;
     uint baseIv;
     StrikeDetails[] strikes;
@@ -54,6 +55,41 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   struct StrikeDetails {
     uint strikePrice;
     uint skew;
+  }
+
+  struct ListingManagerState {
+    BoardDetails[] allBoardDetails;
+    QueuedBoard[] allQueuedBoards;
+    QueuedStrikes[] allQueuedStrikes;
+    QueueableBoardView[] missingExpiries;
+    QueueableStrikesView[] queueableStrikes;
+    ParamView params;
+    uint spotPrice;
+    address riskCouncil;
+  }
+
+  struct ParamView {
+    uint newBoardMinExpiry;
+    uint newBoardMaxExpiry;
+    uint newStrikeMinExpiry;
+    uint numWeeklies;
+    uint numMonthlies;
+    uint maxNumStrikes;
+    uint maxScaledMoneyness;
+    uint boardQueueTime;
+    uint strikeQueueTime;
+    uint queueStaleTime;
+  }
+
+  struct QueueableBoardView {
+    uint expiry;
+    uint baseIv;
+    StrikeToAdd[] strikesToAdd;
+  }
+
+  struct QueueableStrikesView {
+    uint boardId;
+    StrikeToAdd[] strikesToAdd;
   }
 
   ///////////////
@@ -297,12 +333,12 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   }
 
   function _queueNewStrikes(uint boardId, BoardDetails memory boardDetails) internal {
-    uint spotPrice = _getSpotPrice();
+    uint spotPrice = getSpotPrice();
 
     VolGenerator.Board memory board = _toVolGeneratorBoard(boardDetails);
 
     (uint[] memory newStrikes, uint numNewStrikes) = StrikePriceGenerator.getNewStrikes(
-      _secToAnnualized(boardDetails.expiry - block.timestamp),
+      secToAnnualized(boardDetails.expiry - block.timestamp),
       spotPrice,
       maxScaledMoneyness,
       maxNumStrikes,
@@ -366,7 +402,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
 
   /// @dev Internal queueBoard function, assumes the expiry is valid (but does not know if the expiry is already used)
   function _queueNewBoard(uint newExpiry) internal {
-    (uint baseIv, StrikeToAdd[] memory strikesToAdd) = _getNewBoardData(newExpiry);
+    (uint baseIv, StrikeToAdd[] memory strikesToAdd) = _getNewBoardData(getAllBoardDetails(), newExpiry, getSpotPrice());
     queuedBoards[newExpiry].queuedTime = block.timestamp;
     queuedBoards[newExpiry].expiry = newExpiry;
     queuedBoards[newExpiry].baseIv = baseIv;
@@ -375,14 +411,14 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     }
   }
 
-  function _getNewBoardData(uint expiry) internal view returns (uint baseIv, StrikeToAdd[] memory strikesToAdd) {
-    uint spotPrice = _getSpotPrice();
-
+  function _getNewBoardData(
+    BoardDetails[] memory boardDetails,
+    uint expiry,
+    uint spotPrice
+  ) internal view returns (uint baseIv, StrikeToAdd[] memory strikesToAdd) {
     (uint[] memory newStrikes, uint numNewStrikes) = StrikePriceGenerator.getNewStrikes(
-      _secToAnnualized(expiry - block.timestamp), spotPrice, maxScaledMoneyness, maxNumStrikes, new uint[](0), PIVOTS
+      secToAnnualized(expiry - block.timestamp), spotPrice, maxScaledMoneyness, maxNumStrikes, new uint[](0), PIVOTS
     );
-
-    BoardDetails[] memory boardDetails = getAllBoardDetails();
 
     (VolGenerator.Board memory shortDated, VolGenerator.Board memory longDated) =
       _fetchSurroundingBoards(boardDetails, expiry);
@@ -447,7 +483,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     VolGenerator.Board memory shortDated,
     VolGenerator.Board memory longDated
   ) internal view returns (uint baseIv, StrikeToAdd[] memory strikesToAdd) {
-    uint tteAnnualised = _secToAnnualized(expiry - block.timestamp);
+    uint tteAnnualised = secToAnnualized(expiry - block.timestamp);
 
     // Note: we treat the default ATM skew as 1.0, by passing in baseIv as 1, we can determine what the "skew" should be
     // if baseIv is 1. Then we flip the equation to get the baseIv for a skew of 1.0.
@@ -469,7 +505,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     uint numNewStrikes,
     VolGenerator.Board memory edgeBoard
   ) internal view returns (uint baseIv, StrikeToAdd[] memory strikesToAdd) {
-    uint tteAnnualised = _secToAnnualized(expiry - block.timestamp);
+    uint tteAnnualised = secToAnnualized(expiry - block.timestamp);
 
     // Note: we treat the default ATM skew as 1.0, by passing in baseIv as 1, we can determine what the "skew" should be
     // if baseIv is 1. Then we flip the equation to get the baseIv for a skew of 1.0.
@@ -489,6 +525,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   // Utils //
   ///////////
 
+  /// @notice Sort the strikes for a given board and format the data for use in the VolGenerator library
   function _toVolGeneratorBoard(BoardDetails memory details) internal view returns (VolGenerator.Board memory) {
     uint numStrikes = details.strikes.length;
 
@@ -512,7 +549,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
 
     return VolGenerator.Board({
       // This will revert for expired boards
-      tAnnualized: _secToAnnualized(details.expiry - block.timestamp),
+      tAnnualized: secToAnnualized(details.expiry - block.timestamp),
       baseIv: details.baseIv,
       orderedStrikePrices: orderedStrikePrices,
       orderedSkews: orderedSkews
@@ -523,6 +560,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
   // Lyra Protocol getters //
   ///////////////////////////
 
+  /// @notice Fetch all boards and details for the given optionMarket
   function getAllBoardDetails() public view returns (BoardDetails[] memory boardDetails) {
     uint[] memory liveBoards = optionMarket.getLiveBoards();
     boardDetails = new BoardDetails[](liveBoards.length);
@@ -532,6 +570,7 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     return boardDetails;
   }
 
+  /// @notice Fetch all relevant details for a given board
   function getBoardDetails(uint boardId) public view returns (BoardDetails memory boardDetails) {
     (IOptionMarket.OptionBoard memory board, IOptionMarket.Strike[] memory strikes,,,) =
       optionMarket.getBoardAndStrikeDetails(boardId);
@@ -542,110 +581,29 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     for (uint i = 0; i < strikes.length; ++i) {
       strikeDetails[i] = StrikeDetails({strikePrice: strikes[i].strikePrice, skew: boardGreeks.skewGWAVs[i]});
     }
-    return BoardDetails({expiry: board.expiry, baseIv: boardGreeks.ivGWAV, strikes: strikeDetails});
+    return BoardDetails({boardId: boardId, expiry: board.expiry, baseIv: boardGreeks.ivGWAV, strikes: strikeDetails});
   }
 
-  function _getSpotPrice() internal view returns (uint spotPrice) {
+  /// @notice Fetch the current spotPrice
+  function getSpotPrice() public view returns (uint spotPrice) {
     return exchangeAdapter.getSpotPriceForMarket(address(optionMarket), IBaseExchangeAdapter.PriceType.REFERENCE);
   }
 
+  /// @notice Return if the liquidity pool's circuit breaker is active
   function isCBActive() public view returns (bool) {
-    return liquidityPool.CBTimestamp() > block.timestamp;
-  }
-
-  ///////////
-  // Views //
-  ///////////
-
-  function getQueuedBoard(uint expiry) external view returns (QueuedBoard memory) {
-    return queuedBoards[expiry];
-  }
-
-  function getQueuedStrikes(uint boardId) external view returns (QueuedStrikes memory) {
-    return queuedStrikes[boardId];
-  }
-
-  function getValidExpiries() public view returns (uint[] memory validExpiries) {
-    return ExpiryGenerator.getExpiries(numWeeklies, numMonthlies, block.timestamp, LAST_FRIDAYS);
-  }
-
-  function getMissingExpiries() public view returns (uint[] memory missingExpiries) {
-    uint[] memory validExpiries = getValidExpiries();
-    uint missingCount = 0;
-    BoardDetails[] memory boardDetails = getAllBoardDetails();
-    missingExpiries = new uint[](validExpiries.length);
-
-    for (uint i = 0; i < validExpiries.length; ++i) {
-      uint expiryToFind = validExpiries[i];
-      bool found = false;
-      for (uint j = 0; j < boardDetails.length; ++j) {
-        if (boardDetails[j].expiry == expiryToFind) {
-          found = true;
-          break;
-        }
-      }
-      if (!found) {
-        // skip those that are too close to expiry
-        if (expiryToFind > block.timestamp + newBoardMinExpiry) {
-          missingExpiries[missingCount++] = expiryToFind;
-        }
-      }
-    }
-
-    UnorderedMemoryArray.trimArray(missingExpiries, missingCount);
-
-    return missingExpiries;
-  }
-
-  function getAllQueuedBoards() external view returns (QueuedBoard[] memory allQueuedBoards) {
-    uint[] memory validExpiries = getValidExpiries();
-    uint validCount = 0;
-    for (uint i = 0; i < validExpiries.length; ++i) {
-      if (queuedBoards[validExpiries[i]].expiry != 0) {
-        validCount++;
-      }
-    }
-
-    allQueuedBoards = new QueuedBoard[](validCount);
-
-    for (uint i = 0; i < validExpiries.length; ++i) {
-      if (queuedBoards[validExpiries[i]].expiry != 0) {
-        // iterating backwards over validCount will mean boards are returned in reverse order of those returned
-        // by getValidExpiries()
-        allQueuedBoards[--validCount] = queuedBoards[validExpiries[i]];
-      }
-    }
-  }
-
-  function getAllQueuedStrikes() external view returns (QueuedStrikes[] memory allQueuedStrikes) {
-    uint[] memory liveBoards = optionMarket.getLiveBoards();
-
-    uint validCount = 0;
-    for (uint i = 0; i < liveBoards.length; ++i) {
-      if (queuedStrikes[liveBoards[i]].boardId != 0) {
-        validCount++;
-      }
-    }
-
-    allQueuedStrikes = new QueuedStrikes[](validCount);
-
-    for (uint i = 0; i < liveBoards.length; ++i) {
-      if (queuedStrikes[liveBoards[i]].boardId != 0) {
-        // iterating backwards over validCount will mean boards are returned in reverse order of those returned
-        // by getLiveBoards()
-        allQueuedStrikes[--validCount] = queuedStrikes[liveBoards[i]];
-      }
-    }
+    return liquidityPool.CBTimestamp() >= block.timestamp;
   }
 
   //////////
   // Misc //
   //////////
 
-  function _secToAnnualized(uint sec) public pure returns (uint) {
+  /// @notice Convert seconds to an annualised decimal. Note this assumes 365 days in a year.
+  function secToAnnualized(uint sec) public pure returns (uint) {
     return (sec * DecimalMath.UNIT) / uint(365 days);
   }
 
+  /// @notice Sort strikes in order of strikePrice
   function _quickSortStrikes(StrikeDetails[] memory arr, int left, int right) internal pure {
     int i = left;
     int j = right;
@@ -674,34 +632,227 @@ contract ListingManager is ListingManagerLibrarySettings, Ownable2Step {
     }
   }
 
-  ///////////
-  // Views //
-  ///////////
-
-  function viewBoardToBeQueued(uint newExpiry) external view returns (uint baseIv, StrikeToAdd[] memory strikesToAdd) {
-    _validateNewBoardExpiry(newExpiry);
-    return _getNewBoardData(newExpiry);
+  /// @notice Return all the expiries that would be considered valid given the parameters. Does not check min/max expiry
+  function getValidExpiries() public view returns (uint[] memory validExpiries) {
+    return ExpiryGenerator.getExpiries(numWeeklies, numMonthlies, block.timestamp, LAST_FRIDAYS);
   }
 
+  ///////////////////////
+  // View Queued Items //
+  ///////////////////////
+
+  /// @notice Return the queued board for a given expiry
+  function getQueuedBoard(uint expiry) external view returns (QueuedBoard memory) {
+    return queuedBoards[expiry];
+  }
+
+  /// @notice Return the queued strikes for a given board
+  function getQueuedStrikes(uint boardId) external view returns (QueuedStrikes memory) {
+    return queuedStrikes[boardId];
+  }
+
+  /// @notice Return all the current queued boards
+  function getAllQueuedBoards() public view returns (QueuedBoard[] memory allQueuedBoards) {
+    uint[] memory validExpiries = getValidExpiries();
+    uint validCount = 0;
+    for (uint i = 0; i < validExpiries.length; ++i) {
+      if (queuedBoards[validExpiries[i]].expiry != 0) {
+        validCount++;
+      }
+    }
+
+    allQueuedBoards = new QueuedBoard[](validCount);
+
+    for (uint i = 0; i < validExpiries.length; ++i) {
+      if (queuedBoards[validExpiries[i]].expiry != 0) {
+        // iterating backwards over validCount will mean boards are returned in reverse order of those returned
+        // by getValidExpiries()
+        allQueuedBoards[--validCount] = queuedBoards[validExpiries[i]];
+      }
+    }
+  }
+
+  /// @notice Return all the current queued strikes
+  function getAllQueuedStrikes() public view returns (QueuedStrikes[] memory allQueuedStrikes) {
+    uint[] memory liveBoards = optionMarket.getLiveBoards();
+
+    uint validCount = 0;
+    for (uint i = 0; i < liveBoards.length; ++i) {
+      if (queuedStrikes[liveBoards[i]].boardId != 0) {
+        validCount++;
+      }
+    }
+
+    allQueuedStrikes = new QueuedStrikes[](validCount);
+
+    for (uint i = 0; i < liveBoards.length; ++i) {
+      if (queuedStrikes[liveBoards[i]].boardId != 0) {
+        // iterating backwards over validCount will mean boards are returned in reverse order of those returned
+        // by getLiveBoards()
+        allQueuedStrikes[--validCount] = queuedStrikes[liveBoards[i]];
+      }
+    }
+  }
+
+  //////////////////
+  // Helper Views //
+  //////////////////
+
+  /// @notice Return all the current parameter values for the contract
+  function getListingManagerParams() public view returns (ParamView memory) {
+    return ParamView({
+      newBoardMinExpiry: newBoardMinExpiry,
+      newBoardMaxExpiry: newBoardMaxExpiry,
+      newStrikeMinExpiry: newStrikeMinExpiry,
+      numWeeklies: numWeeklies,
+      numMonthlies: numMonthlies,
+      maxNumStrikes: maxNumStrikes,
+      maxScaledMoneyness: maxScaledMoneyness,
+      boardQueueTime: boardQueueTime,
+      strikeQueueTime: strikeQueueTime,
+      queueStaleTime: queueStaleTime
+    });
+  }
+
+  /// @notice For a given expiry, check the validity and return the board generated
+  function viewBoardToBeQueued(uint newExpiry) external view returns (uint baseIv, StrikeToAdd[] memory strikesToAdd) {
+    _validateNewBoardExpiry(newExpiry);
+    return _getNewBoardData(getAllBoardDetails(), newExpiry, getSpotPrice());
+  }
+
+  /// @notice Return all the strikes that would be added to the given board
   function viewStrikesToBeQueued(uint boardId) external view returns (StrikeToAdd[] memory strikesToAdd) {
-    BoardDetails memory boardDetails = getBoardDetails(boardId);
+    return _viewStrikesToBeQueued(getBoardDetails(boardId), getSpotPrice());
+  }
+
+  function _viewStrikesToBeQueued(
+    BoardDetails memory boardDetails,
+    uint spotPrice
+  ) internal view returns (StrikeToAdd[] memory strikesToAdd) {
     VolGenerator.Board memory board = _toVolGeneratorBoard(boardDetails);
 
     (uint[] memory newStrikes, uint numNewStrikes) = StrikePriceGenerator.getNewStrikes(
-      _secToAnnualized(boardDetails.expiry - block.timestamp),
-      _getSpotPrice(),
-      maxScaledMoneyness,
-      maxNumStrikes,
-      board.orderedStrikePrices,
-      PIVOTS
+      board.tAnnualized, spotPrice, maxScaledMoneyness, maxNumStrikes, board.orderedStrikePrices, PIVOTS
     );
 
-    strikesToAdd = new StrikeToAdd[](newStrikes.length);
+    strikesToAdd = new StrikeToAdd[](numNewStrikes);
 
     for (uint i = 0; i < numNewStrikes; i++) {
       strikesToAdd[i] =
         StrikeToAdd({strikePrice: newStrikes[i], skew: VolGenerator.getSkewForLiveBoard(newStrikes[i], board)});
     }
+  }
+
+  /// @notice Return all expiries that can have boards added
+  function getAllMissingExpiries() external view returns (uint[] memory missingExpiries) {
+    BoardDetails[] memory boardDetails = getAllBoardDetails();
+    return _getAllMissingExpiries(boardDetails);
+  }
+
+  function _getAllMissingExpiries(BoardDetails[] memory boardDetails)
+    internal
+    view
+    returns (uint[] memory missingExpiries)
+  {
+    uint[] memory validExpiries = getValidExpiries();
+    uint missingCount = 0;
+    missingExpiries = new uint[](validExpiries.length);
+
+    for (uint i = 0; i < validExpiries.length; ++i) {
+      uint expiryToFind = validExpiries[i];
+      bool found = false;
+      for (uint j = 0; j < boardDetails.length; ++j) {
+        if (boardDetails[j].expiry == expiryToFind) {
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        if (queuedBoards[expiryToFind].expiry != 0) {
+          continue;
+        }
+        // skip those that are too close to expiry or beyond the max expiry
+        if (expiryToFind > block.timestamp + newBoardMinExpiry && expiryToFind < block.timestamp + newBoardMaxExpiry) {
+          missingExpiries[missingCount++] = expiryToFind;
+        }
+      }
+    }
+
+    UnorderedMemoryArray.trimArray(missingExpiries, missingCount);
+
+    return missingExpiries;
+  }
+
+  /// @notice Return all boardIds that can have strikes added
+  function getAllQueueableBoards() external view returns (BoardDetails[] memory boardDetails) {
+    return _getAllQueueableBoards(getAllBoardDetails(), getSpotPrice());
+  }
+
+  function _getAllQueueableBoards(
+    BoardDetails[] memory boardDetails,
+    uint spotPrice
+  ) internal view returns (BoardDetails[] memory) {
+    uint[] memory queueableBoardIndex = new uint[](boardDetails.length);
+    uint numQueueableBoards = 0;
+    for (uint i = 0; i < boardDetails.length; i++) {
+      if (queuedStrikes[boardDetails[i].boardId].boardId != 0) {
+        continue;
+      }
+
+      VolGenerator.Board memory board = _toVolGeneratorBoard(boardDetails[i]);
+
+      (, uint numNewStrikes) = StrikePriceGenerator.getNewStrikes(
+        board.tAnnualized, spotPrice, maxScaledMoneyness, maxNumStrikes, board.orderedStrikePrices, PIVOTS
+      );
+
+      if (numNewStrikes == 0) {
+        continue;
+      }
+      queueableBoardIndex[numQueueableBoards++] = i;
+    }
+
+    BoardDetails[] memory queueableBoards = new BoardDetails[](numQueueableBoards);
+
+    for (uint i = 0; i < numQueueableBoards; i++) {
+      queueableBoards[i] = boardDetails[queueableBoardIndex[i]];
+    }
+
+    return queueableBoards;
+  }
+
+  /// @notice Return all relevant data for this contract
+  function getListingManagerState() external view returns (ListingManagerState memory listingManagerState) {
+    listingManagerState.spotPrice = getSpotPrice();
+    listingManagerState.allBoardDetails = getAllBoardDetails();
+
+    // Boards
+    listingManagerState.allQueuedBoards = getAllQueuedBoards();
+
+    uint[] memory missingExpiries = _getAllMissingExpiries(listingManagerState.allBoardDetails);
+    listingManagerState.missingExpiries = new QueueableBoardView[](missingExpiries.length);
+    for (uint i = 0; i < missingExpiries.length; i++) {
+      (uint baseIv, StrikeToAdd[] memory strikesToAdd) =
+        _getNewBoardData(listingManagerState.allBoardDetails, missingExpiries[i], listingManagerState.spotPrice);
+      listingManagerState.missingExpiries[i] =
+        QueueableBoardView({expiry: missingExpiries[i], baseIv: baseIv, strikesToAdd: strikesToAdd});
+    }
+
+    // Strikes
+    listingManagerState.allQueuedStrikes = getAllQueuedStrikes();
+
+    BoardDetails[] memory queueableStrikes =
+      _getAllQueueableBoards(listingManagerState.allBoardDetails, listingManagerState.spotPrice);
+    listingManagerState.queueableStrikes = new QueueableStrikesView[](queueableStrikes.length);
+    for (uint i = 0; i < queueableStrikes.length; i++) {
+      StrikeToAdd[] memory strikesToAdd = _viewStrikesToBeQueued(queueableStrikes[i], listingManagerState.spotPrice);
+      listingManagerState.queueableStrikes[i] =
+        QueueableStrikesView({boardId: queueableStrikes[i].boardId, strikesToAdd: strikesToAdd});
+    }
+
+    listingManagerState.params = getListingManagerParams();
+    listingManagerState.riskCouncil = riskCouncil;
+
+    return listingManagerState;
   }
 
   ///////////////

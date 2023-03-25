@@ -166,6 +166,7 @@ contract ListingManager_fetchSurroundingBoards_Test is ListingManagerTestBase {
     // strikeDetails length of 0 - reverts
     boardDetails = new ListingManager.BoardDetails[](1);
     boardDetails[0] = ListingManager.BoardDetails({
+      boardId: 1,
       expiry: shorterExpiry,
       baseIv: 1 ether,
       strikes: new ListingManager.StrikeDetails[](0)
@@ -191,6 +192,7 @@ contract ListingManager_fetchSurroundingBoards_Test is ListingManagerTestBase {
   function getBoardDetailsArray(uint expiry1) internal returns (ListingManager.BoardDetails[] memory) {
     ListingManager.BoardDetails[] memory res = new ListingManager.BoardDetails[](1);
     res[0] = ListingManager.BoardDetails({
+      boardId: 1,
       expiry: expiry1,
       baseIv: 1 ether,
       // Note: board needs at least one strike, otherwise sorting the strikes fails
@@ -202,13 +204,18 @@ contract ListingManager_fetchSurroundingBoards_Test is ListingManagerTestBase {
   function getBoardDetailsArray(uint expiry1, uint expiry2) internal returns (ListingManager.BoardDetails[] memory) {
     ListingManager.BoardDetails[] memory res = new ListingManager.BoardDetails[](2);
     res[0] = ListingManager.BoardDetails({
+      boardId: 1,
       expiry: expiry1,
       baseIv: 1 ether,
       // Note: board needs at least one strike, otherwise sorting the strikes fails
       strikes: new ListingManager.StrikeDetails[](1)
     });
-    res[1] =
-      ListingManager.BoardDetails({expiry: expiry2, baseIv: 2 ether, strikes: new ListingManager.StrikeDetails[](1)});
+    res[1] = ListingManager.BoardDetails({
+      boardId: 1,
+      expiry: expiry2,
+      baseIv: 2 ether,
+      strikes: new ListingManager.StrikeDetails[](1)
+    });
     return res;
   }
 
@@ -219,15 +226,24 @@ contract ListingManager_fetchSurroundingBoards_Test is ListingManagerTestBase {
   ) internal returns (ListingManager.BoardDetails[] memory) {
     ListingManager.BoardDetails[] memory res = new ListingManager.BoardDetails[](3);
     res[0] = ListingManager.BoardDetails({
+      boardId: 1,
       expiry: expiry1,
       baseIv: 1 ether,
       // Note: board needs at least one strike, otherwise sorting the strikes fails
       strikes: new ListingManager.StrikeDetails[](1)
     });
-    res[1] =
-      ListingManager.BoardDetails({expiry: expiry2, baseIv: 2 ether, strikes: new ListingManager.StrikeDetails[](1)});
-    res[2] =
-      ListingManager.BoardDetails({expiry: expiry3, baseIv: 3 ether, strikes: new ListingManager.StrikeDetails[](1)});
+    res[1] = ListingManager.BoardDetails({
+      boardId: 1,
+      expiry: expiry2,
+      baseIv: 2 ether,
+      strikes: new ListingManager.StrikeDetails[](1)
+    });
+    res[2] = ListingManager.BoardDetails({
+      boardId: 1,
+      expiry: expiry3,
+      baseIv: 3 ether,
+      strikes: new ListingManager.StrikeDetails[](1)
+    });
     return res;
   }
 }

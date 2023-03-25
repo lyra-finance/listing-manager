@@ -31,7 +31,7 @@ contract ListingManagerTest is ListingManagerTestBase {
   }
 
   function testGetMissingExpiries() public {
-    uint[] memory missingExpiries = listingManager.getMissingExpiries();
+    uint[] memory missingExpiries = listingManager.getAllMissingExpiries();
     for (uint i = 0; i < missingExpiries.length; i++) {
       listingManager.queueNewBoard(missingExpiries[i]);
     }
@@ -39,5 +39,9 @@ contract ListingManagerTest is ListingManagerTestBase {
     for (uint i = 0; i < allQueuedBoards.length; i++) {
       assertEq(allQueuedBoards[i].expiry, missingExpiries[allQueuedBoards.length - i - 1]);
     }
+  }
+
+  function testGetState() public {
+    listingManager.getListingManagerState();
   }
 }

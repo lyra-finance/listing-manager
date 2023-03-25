@@ -17,7 +17,7 @@ contract TestListingManager is ListingManager {
     view
     returns (uint baseIv, ListingManager.StrikeToAdd[] memory boards)
   {
-    return _getNewBoardData(newExpiry);
+    return _getNewBoardData(getAllBoardDetails(), newExpiry, getSpotPrice());
   }
 
   function TEST_fetchSurroundingBoards(
@@ -25,10 +25,6 @@ contract TestListingManager is ListingManager {
     uint expiry
   ) external view returns (VolGenerator.Board memory shortDated, VolGenerator.Board memory longDated) {
     return _fetchSurroundingBoards(boardDetails, expiry);
-  }
-
-  function TEST_secToAnnualized(uint sec) external pure returns (uint) {
-    return _secToAnnualized(sec);
   }
 
   function TEST_quickSortStrikes(ListingManager.StrikeDetails[] memory arr)

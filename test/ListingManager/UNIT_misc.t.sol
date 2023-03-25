@@ -11,12 +11,12 @@ contract ListingManager_misc_Test is ListingManagerTestBase {
   /////////////////////
 
   function testSecToAnnualised() public {
-    assertEq(listingManager.TEST_secToAnnualized(0), 0);
+    assertEq(listingManager.secToAnnualized(0), 0);
     // Note: off by 1 as the division rounds down
-    assertEq(listingManager.TEST_secToAnnualized(1), 0.000000031709791983 ether);
-    assertEq(listingManager.TEST_secToAnnualized(1 days), 0.00273972602739726 ether);
-    assertEq(listingManager.TEST_secToAnnualized(365 days), 1 ether);
-    assertEq(listingManager.TEST_secToAnnualized(365 days * 3), 3 ether);
+    assertEq(listingManager.secToAnnualized(1), 0.000000031709791983 ether);
+    assertEq(listingManager.secToAnnualized(1 days), 0.00273972602739726 ether);
+    assertEq(listingManager.secToAnnualized(365 days), 1 ether);
+    assertEq(listingManager.secToAnnualized(365 days * 3), 3 ether);
   }
 
   //////////////////////
